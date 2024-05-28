@@ -3,9 +3,6 @@
 # 设置原始数据目录
 raw_data_dir="/public1/guop/mawx/workspace/wild_snpcalling/1.rawdata"
 
-##ghfhghgfh
-
-
 # 设置输出目录
 output_dir="/public1/guop/mawx/workspace/wild_snpcalling/2.cleaned_data"  # 确保这是您的目标输出目录
 
