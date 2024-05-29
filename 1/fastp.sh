@@ -1,10 +1,10 @@
 #!/bin/bash
 # fastp 0.23.4
 # 设置原始数据目录
-raw_data_dir="/public1/guop/mawx/workspace/wild_snpcalling/1.rawdata"
+raw_data_dir="/public1/guop/jpq/1.rawdata/"
 
 # 设置输出目录
-output_dir="/public1/guop/mawx/workspace/wild_snpcalling/2.cleaned_data"  # 确保这是您的目标输出目录
+output_dir="/public1/guop/jpq/workspace/lianxi/"  # 确保这是您的目标输出目录
 
 # 设置质量报告输出目录
 report_dir="$output_dir/reports"
