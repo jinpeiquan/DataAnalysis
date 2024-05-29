@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # 设置原始数据目录
-raw_data_dir="/public1/guop/mawx/workspace/wild_snpcalling/2.cleaned_data"
+raw_data_dir="/public1/guop/jpq/workspace/clean_data1/"
 
 # 设置输出目录
-output_dir="/public1/guop/mawx/workspace/wild_snpcalling/3.bwa_sam_bam"
+output_dir="/public1/guop/jpq/workspace/bwa_bidui/"
 
 # 定义参考基因组文件
-reference_genome="/public1/guop/mawx/workspace/wild_snpcalling/0.genome/LYG.hic.fasta"
+reference_genome="/public1/guop/jpq/0.genome/LYG.hic.fasta"
 
 # 创建输出目录（如果不存在）
 mkdir -p "$output_dir/sam" "$output_dir/bam" "$output_dir/sorted_bam"
