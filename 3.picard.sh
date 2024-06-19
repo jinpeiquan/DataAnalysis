@@ -4,13 +4,13 @@
 picard_jar_path="/public1/guop/mawx/software/picard/picard.jar"
 
 # 设置输出目录
-output_dir="/public1/guop/jpq/workspace/bwa_map/3.bwa_sam_bam/"
+output_dir="/public1/guop/jpq/workspace/3.bwa_sam_bam/"
 
 # 定义参考基因组文件
 reference_genome="/public1/guop/jpq/0.genome/LYG.hic.fasta"
 
 # 设置Picard输出目录，包含metrics文件夹
-picard_dir="/public1/guop/jpq/workspace/bwa_map/3.bwa_sam_bam/picard_metrics"
+picard_dir="/public1/guop/jpq/workspace/3.bwa_sam_bam/picard_metrics"
 
 # 创建输出目录（如果不存在）
 mkdir -p "$output_dir/sorted_bam" "$output_dir/markdup" "$output_dir/tmp" "$picard_dir"
@@ -32,7 +32,7 @@ process_picard() {
     java -Xmx32g -jar "$picard_jar_path" MarkDuplicates \
         -I "$sorted_bam_path" \
         -O "$output_dir/markdup/${base_name}.markdup.bam" \
-        -M "/public1/guop/jpq/workspace/bwa_map/3.bwa_sam_bam/picard_metrics/${base_name}.metrics.txt" \
+        -M "/public1/guop/jpq/workspace/3.bwa_sam_bam/picard_metrics/${base_name}.metrics.txt" \
         --MAX_FILE_HANDLES_FOR_READ_ENDS_MAP 1000 \
         --REMOVE_DUPLICATES false \
         --ASSUME_SORTED true \
