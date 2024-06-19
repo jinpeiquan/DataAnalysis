@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 设置Picard软件的路径
-picard_jar_path="/public1/guop/jpq/software/picard/picard.jar"
+picard_jar_path="/public1/guop/mawx/software/picard/picard.jar"
 
 # 设置输出目录
 output_dir="/public1/guop/jpq/workspace/bwa_map/3.bwa_sam_bam/"
