@@ -1,16 +1,16 @@
 #!/bin/bash
 
 # 设置Picard软件的路径
-picard_jar_path="/public1/guop/mawx/software/picard/picard.jar"
+picard_jar_path="/public1/guop/jpq/software/picard/picard.jar"
 
 # 设置输出目录
-output_dir="/public1/guop/mawx/workspace/wild_snpcalling/3.bwa_sam_bam/"
+output_dir="/public1/guop/jpq/workspace/bwa_map/3.bwa_sam_bam/"
 
 # 定义参考基因组文件
-reference_genome="/public1/guop/mawx/workspace/wild_snpcalling/0.genome/LYG.hic.fasta"
+reference_genome="/public1/guop/jpq/0.genome/LYG.hic.fasta"
 
 # 设置Picard输出目录，包含metrics文件夹
-picard_dir="/public1/guop/mawx/workspace/wild_snpcalling/3.bwa_sam_bam/picard_metrics"
+picard_dir="/public1/guop/jpq/workspace/bwa_map/3.bwa_sam_bam/picard_metrics"
 
 # 创建输出目录（如果不存在）
 mkdir -p "$output_dir/sorted_bam" "$output_dir/markdup" "$output_dir/tmp" "$picard_dir"
