@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # 设置原始数据目录
-raw_data_dir="/public1/guop/jpq/workspace/lianxi/"
+raw_data_dir="/public1/guop/jpq/workspace/test/"
 
 # 设置输出目录
-output_dir="/public1/guop/jpq/workspace/bwa_bidui/"
+output_dir="/public1/guop/jpq/workspace/bwa_map/"
 
 # 定义参考基因组文件
 reference_genome="/public1/guop/jpq/0.genome/LYG.hic.fasta"
