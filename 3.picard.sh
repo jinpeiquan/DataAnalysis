@@ -13,7 +13,7 @@ reference_genome="/public1/guop/jpq/0.genome/LYG.hic.fasta"
 picard_dir="/public1/guop/jpq/workspace/bwa_map/picard_metrics"
 
 # 创建输出目录（如果不存在）
-mkdir -p "$output_dir/sorted_bam" "$output_dir/markdup" "$output_dir/tmp" "$picard_dir"
+mkdir -p "$output_dir/sorted_bam" "$output_dir/markdup" "$output_dir/tmp" "$picard_dir" "$output_dir/unmapped_bam"
 
 # 设置日志文件
 log_file="$output_dir/picard_markduplicates_processing.log"
