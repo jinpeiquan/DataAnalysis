@@ -44,6 +44,8 @@ process_picard() {
     echo "Indexing marked duplicates BAM for $base_name at $(date)" >> "$log_file"
     samtools index -@ 16 "$output_dir/markdup/${base_name}.markdup.bam" || { echo "Indexing failed for $base_name"; exit 1; }
     echo "Indexing marked duplicates BAM completed for $base_name at $(date)" >> "$log_file"
+     # 提取未映射的reads
+    samtools view -b -f 4 "$output_dir/markdup/${base_name}.markdup.bam" > "$output_dir/unmapped_bam/${base_name}.unmapped.bam" || { echo "Failed to extract unmapped reads for $base_name" >> "$log_file"; exit 1; }
 }
 
 export -f process_picard
