@@ -5,17 +5,16 @@
 picard_jar_path="/public1/guop/mawx/software/picard/picard.jar"
 
 # 设置输出目录
-output_dir="/public1/guop/mawx/workspace/wild_snpcalling/3.bwa_sam_bam/"
+output_dir="/public1/guop/xxxxxxx"
 
 # 定义参考基因组文件
-reference_genome="/public1/guop/mawx/workspace/wild_snpcalling/0.genome/LYG.hic.fasta"
+reference_genome="/public1/guop/xxxxxxxxxxxx"
 
 # 设置Picard输出目录，包含metrics文件夹
-picard_dir="/public1/guop/mawx/workspace/wild_snpcalling/3.bwa_sam_bam/picard_metrics"
+picard_dir="/public1/guop/xxxxxxxx/picard_metrics"
 
 # 创建输出目录（如果不存在）
-mkdir -p "$output_dir/sorted_bam" "$output_dir/markdup" "$output_dir/tmp" "$picard_dir"
-
+mkdir -p "$output_dir/sorted_bam" "$output_dir/markdup" "$output_dir/tmp" "$picard_dir" "$output_dir/unmapped_bam"
 # 设置日志文件
 log_file="$output_dir/picard_markduplicates_processing.log"
 
@@ -45,7 +44,9 @@ process_picard() {
     echo "Indexing marked duplicates BAM for $base_name at $(date)" >> "$log_file"
     samtools index -@ 16 "$output_dir/markdup/${base_name}.markdup.bam" || { echo "Indexing failed for $base_name"; exit 1; }
     echo "Indexing marked duplicates BAM completed for $base_name at $(date)" >> "$log_file"
-    
+
+    # 提取未映射的reads
+    samtools view -b -f 4 "$output_dir/markdup/${base_name}.markdup.bam" > "$output_dir/unmapped_bam/${base_name}.unmapped.bam" || { echo "Failed to extract unmapped reads for $base_name" >> "$log_file"; exit 1; }
 }
 
 export -f process_picard
