@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 设置Picard软件的路径
-picard_jar_path="/public1/guop/mawx/software/picard/picard.jar"
+picard_jar_path=~/anaconda2/bin/picard
 
 # 设置输出目录
 output_dir="/public1/guop/jpq/workspace/bwa_map/"
@@ -29,7 +29,7 @@ process_picard() {
     
     # Picard MarkDuplicates去重
     echo "Marking duplicates for $base_name at $(date)" >> "$log_file"
-    java -Xmx32g -jar "$picard_jar_path" MarkDuplicates \
+    $picard_jar_path MarkDuplicates \
         -I "$sorted_bam_path" \
         -O "$output_dir/markdup/${base_name}.markdup.bam" \
         -M "/public1/guop/jpq/workspace/bwa_map/picard_metrics/${base_name}.metrics.txt" \
