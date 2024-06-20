@@ -1,4 +1,37 @@
+#!/bin/bash
 
+# 设置输入和输出目录
+input_dir="/path/to/your/input_bam_files"
+output_dir="/path/to/your/output_unmapped_reads"
+
+# 创建输出目录（如果不存在）
+mkdir -p "$output_dir"
+
+# 设置日志文件
+log_file="$output_dir/extract_unmapped_reads.log"
+
+# 记录脚本开始时间
+echo "Script started at $(date)" >> "$log_file"
+
+# 定义处理BAM文件的函数
+extract_unmapped_reads() {
+    bam_file=$1
+    base_name=$(basename "$bam_file" ".bam")
+    echo "Processing $base_name at $(date)" >> "$log_file"
+    
+    # 提取未映射的reads
+    samtools view -b -f 4 "$bam_file" > "$output_dir/${base_name}.unmapped.bam" || { echo "Failed to extract unmapped reads for $base_name" >> "$log_file"; exit 1; }
+    
+    echo "Completed processing $base_name at $(date)" >> "$log_file"
+}
+
+export -f extract_unmapped_reads
+
+# 使用find命令和parallel并行处理输入目录中的所有BAM文件
+find "$input_dir" -name '*.bam' | sort | parallel -j 15 extract_unmapped_reads {}
+
+# 记录脚本完成时间
+echo "Script completed at $(date)" >> "$log_file"
 
 
 
