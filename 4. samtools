@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # 设置输入和输出目录
-input_dir="/path/to/your/input_bam_files"
-output_dir="/path/to/your/output_unmapped_reads"
+input_dir="/public1/guop/jpq/workspace/bwa_map/input_bam_files"
+output_dir="/public1/guop/jpq/workspace/output_unmapped_reads"
 
 # 创建输出目录（如果不存在）
 mkdir -p "$output_dir"
