@@ -1,0 +1,12 @@
+cd /public1/guop/jpq/workspace/bwa_map/unmapped_bam/
+
+# 创建新的目录用于存放FastQ文件
+mkdir -p ../unmapped_fastq
+
+for bamfile in *.bam
+do
+    fastqfile="../unmapped_fastq/${bamfile%.bam}.fastq"
+    samtools fastq -@ 4 "$bamfile" -o "$fastqfile"
+done
+
+
