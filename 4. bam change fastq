@@ -8,5 +8,17 @@ do
     fastqfile="../unmapped_fastq/${bamfile%.bam}.fastq"
     samtools fastq -@ 4 "$bamfile" -o "$fastqfile"
 done
+脚本说明：
+cd /public1/guop/jpq/workspace/bwa_map/unmapped_bam/：切换到包含BAM文件的目录。
+mkdir -p ../unmapped_fastq：创建一个名为unmapped_fastq的新目录，用于存放转换后的FastQ文件。-p选项确保当目录不存在时会创建它。
+for bamfile in *.bam：遍历当前目录中的所有BAM文件。
+fastqfile="../unmapped_fastq/${bamfile%.bam}.fastq"：定义输出FastQ文件的路径和名称，将其放置在unmapped_fastq目录中。
+samtools fastq -@ 4 "$bamfile" -o "$fastqfile"：使用samtools fastq将每个BAM文件转换为FastQ文件，并输出到指定路径。
+运行这个脚本，将所有的BAM文件转换为FastQ文件并保存到/public1/guop/jpq/workspace/bwa_map/unmapped_fastq/目录中。
+
+
+
+
+
 
 
