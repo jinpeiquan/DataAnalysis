@@ -1,1 +1,2 @@
+masurca -i /public1/liuyp/jpq/workspace/only_unmapped_sorted_fastq/LX_4.unmapped_sorted_1.fastq,/public1/liuyp/jpq/workspace/only_unmapped_sorted_fastq/LX_4.unmapped_sorted_2.fastq -t 8 -o /public1/liuyp/jpq/workspace/masurca_assemble/assemble.sh
 
