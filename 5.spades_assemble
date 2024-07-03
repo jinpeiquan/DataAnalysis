@@ -1,0 +1,8 @@
+ conda create -n spades_env python=3.8  # 创建名为 spades_env 的环境，可以根据需要选择不同的 Python 版本
+conda activate spades_env  # 激活环境
+conda install -c bioconda spades #使用 Conda 安装 SPAdes
+spades.py --version      #验证 SPAdes 是否成功安装
+spades.py -1 /public1/guop/jpq/workspace/new_gene_iden/wild_guihua/only_unmapped_sorted_fastq/LS_6.unmapped_sorted_1.fastq \
+          -2 /public1/guop/jpq/workspace/new_gene_iden/wild_guihua/only_unmapped_sorted_fastq/LS_6.unmapped_sorted_2.fastq \
+          -o /public1/guop/jpq/workspace/new_gene_iden/wild_guihua/LS_6/zuzhuang \
+          --careful --cov-cutoff auto --threads 16 --memory 64
