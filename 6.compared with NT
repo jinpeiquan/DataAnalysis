@@ -1,2 +1,2 @@
 which update_blastdb.pl #下载脚本
-update_blastdb.pl --decompress nt #下载nt数据库
+update_blastdb.pl --decompress nt #下载并解压nt数据库
