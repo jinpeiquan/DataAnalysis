@@ -34,7 +34,7 @@ ascp -A
 #确保认证信息正确，首先，检查文件的权限和所有者
 ls -l ~/.aspera/connect/etc/asperaweb_id_dsa.openssh
 #你会看到类似如下的输出
--rw------- 1 liuyp liuyp 1679 Jul  4 12:34 ~/.aspera/connect/etc/asperaweb_id_dsa.openssh
+#-rw------- 1 liuyp liuyp 1679 Jul  4 12:34 ~/.aspera/connect/etc/asperaweb_id_dsa.openssh
 #使用 chmod 修改文件权限，确保当前用户对认证文件有读取权限。使用 chmod 命令来更改文件权限
 chmod 600 ~/.aspera/connect/etc/asperaweb_id_dsa.openssh
 #使用 ascp 继续下载
