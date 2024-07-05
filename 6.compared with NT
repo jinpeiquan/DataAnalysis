@@ -1,2 +1,61 @@
+#1. 安装BLAST+
+wget https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/2.13.0/ncbi-blast-2.13.0+-x64-linux.tar.gz #从NCBI下载BLAST+
+tar -xzvf ncbi-blast-2.13.0+-x64-linux.tar.gz #解压文件
+export PATH=$PATH:/path/to/ncbi-blast-2.13.0+/bin #设置环境变量，将BLAST+的路径添加到环境变量中
+blastn -version #确认BLAST+已经正确安装
+#2.下载并准备NT数据库
 which update_blastdb.pl #下载脚本
-update_blastdb.pl --decompress nt #下载并解压nt数据库
+update_blastdb.pl --decompress nt #下载并解压nt数据库（error)
+#1.安装aspera
+wget -c https://download.asperasoft.com/download/sw/connect/3.8.1/ibm-aspera-connect-3.8.1.161274-linux-g2.12-64.tar.gz
+tar -zxvf  ibm-aspera-connect-3.8.1.161274-linux-g2.12-64.tar.gz
+#看下载的文件名称是什么，我的是ibm-aspera-connect-3.8.1.161274-linux-g2.12-64.sh
+sh ibm-aspera-connect-3.8.1.161274-linux-g2.12-64.sh
+# 所有安装文件都在~/.aspera/connect目录下，添加环境变量
+echo 'export PATH=~/.aspera/connect/bin/:$PATH' >> ~/.bashrc
+# 使环境变量生效
+source ~/.bashrc
+# 查看ascp可执行文件所在的路径，应该是：~/.aspera/connect/bin/ascp
+which ascp
+# 看程序是否能正常运行
+ascp -h
+#2.下载并准备NT数据库
+#进入file.lst粘贴(举例/blast/db/nt.001.tar.gz)（{00..150}）
+vim file.lst
+#运行ascp，大功告成，安心等待下载完毕
+ascp -QT -i ~/.aspera/connect/etc/asperaweb_id_dsa.openssh -l 1000M -T -k 1 --mode recv --host ftp.ncbi.nlm.nih.gov --user anonftp --file-list file.lst .
+#补充一下，后来又下了一次nr数据库，不用那么麻烦了哈哈哈（没用这一步）
+for i in {00..150};do ascp -QT -i ~/.aspera/connect/etc/asperaweb_id_dsa.openssh -l 1000M -k 1 -T anonftp@ftp.ncbi.nlm.nih.gov:/blast/db/nr.${i}.tar.gz ./public1/liuyp/jpq/workspace/NT
+;done
+#确保 Aspera Connect 安装正确
+ascp -A
+#确保你使用的认证文件正确，并且路径正确。假设你使用默认的 Aspera Connect 认证文件
+~/.aspera/connect/etc/asperaweb_id_dsa.openssh #权限不够
+#确保认证信息正确，首先，检查文件的权限和所有者
+ls -l ~/.aspera/connect/etc/asperaweb_id_dsa.openssh
+#你会看到类似如下的输出
+-rw------- 1 liuyp liuyp 1679 Jul  4 12:34 ~/.aspera/connect/etc/asperaweb_id_dsa.openssh
+#使用 chmod 修改文件权限，确保当前用户对认证文件有读取权限。使用 chmod 命令来更改文件权限
+chmod 600 ~/.aspera/connect/etc/asperaweb_id_dsa.openssh
+#使用 ascp 继续下载
+#确保 Aspera Connect 安装和配置正确
+ascp -A
+#使用 ascp 的 -k 1 选项继续下载未完成的文件（没有用这一步）
+for i in {00..150}; do
+    ascp -QT -l 1000M -k 1 -T anonftp@ftp.ncbi.nlm.nih.gov:/blast/db/nt.${i}.tar.gz /public1/liuyp/jpq/workspace/NT
+done
+
+#中途中断，重新下载（1）检查和处理下载失败的文件，在下载过程中，你可以使用脚本来检查哪些文件未完全下载并重新尝试下载
+ for i in {00..150}; do
+>     if [ ! -f /public1/liuyp/jpq/workspace/NT/nt.${i}.tar.gz ] || [ $(stat -c%s /public1/liuyp/jpq/workspace/NT/nt.${i}.tar.gz) -lt 100000hen
+>         echo "File nt.${i}.tar.gz is incomplete or missing. Downloading again..."
+>         wget -c -O /public1/liuyp/jpq/workspace/NT/nt.${i}.tar.gz ftp://ftp.ncbi.nlm.nih.gov/blast/db/nt.${i}.tar.gz
+>     fi
+> done
+#法二 #使用 wegt方式下载
+#使用 wget 方式下载文件：重新下载所有文件，运行此脚本将尝试下载所有 nt 数据库文件，并且如果之前有部分文件下载中断，它会继续下载未完成的部分。
+  for i in {00..150}; do
+>     wget -c -O /public1/liuyp/jpq/workspace/NT/nt.${i}.tar.gz ftp://ftp.ncbi.nlm.nih.gov/blast/db/nt.${i}.tar.gz
+> done
+
+
