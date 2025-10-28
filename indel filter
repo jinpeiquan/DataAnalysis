@@ -9,6 +9,7 @@ nohup vcftools --gzvcf 202_samples.merged.vcf \
          --remove-indv ZJS_10 > biallelic_filter.log 2>&1 &
 
 echo "双等位位点提取进程 PID: $!"
+原始位点: 86,801个;保留位点: 86,799个（双等位位点）;过滤掉: 2个非双等位位点
 
 #过滤质量、深度、maf、missing
 nohup vcftools --vcf 200_samples_filtered.recode.vcf \
