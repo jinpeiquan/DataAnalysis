@@ -7,3 +7,16 @@ nohup vcftools --vcf 202_samples.merged.vcf \
                --remove-indv ZJS_10 > vcftools.log 2>&1 &
 
 echo "进程 PID: $!"
+
+#过滤质量、深度、maf、missing
+nohup vcftools --vcf 200_samples_filtered.recode.vcf \
+               --maf 0.05 \
+               --minGQ 10 \
+               --min-meanDP 6 \
+               --minQ 30 \
+               --max-missing 0.8 \
+               --recode-INFO-all \
+               --out 200_samples_final_filtered \
+               --recode > vcftools_quality_filter.log 2>&1 &
+
+echo "质量过滤进程 PID: $!"
