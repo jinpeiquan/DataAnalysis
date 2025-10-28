@@ -11,15 +11,12 @@ nohup vcftools --gzvcf 202_samples.merged.vcf \
 echo "双等位位点提取进程 PID: $!"
 原始位点: 86,801个;保留位点: 86,799个（双等位位点）;过滤掉: 2个非双等位位点
 
-#过滤质量、深度、maf、missing
-nohup vcftools --vcf 200_samples_filtered.recode.vcf \
-               --maf 0.05 \
-               --minGQ 10 \
-               --min-meanDP 6 \
-               --minQ 30 \
-               --max-missing 0.8 \
-               --recode-INFO-all \
-               --out 200_samples_final_filtered \
-               --recode > vcftools_quality_filter.log 2>&1 &
+#过滤maf、missing
+nohup vcftools --vcf 200_samples_bia_indel.recode.vcf \
+         --maf 0.05 \
+         --max-missing 0.8 \
+         --recode \
+         --recode-INFO-all \
+         --out 200_samples_maf_miss > maf_miss_filter.log 2>&1 &
 
-echo "质量过滤进程 PID: $!"
+echo "MAF和缺失率过滤进程 PID: $!"
