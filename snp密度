@@ -1,1 +1,3 @@
-
+#提取VCF文件前两列（CHROM和POS）的命令，输入文件200_samples_er_snp_filtered_vcftools.recode.vcf，输出文件chrom_pos.txt
+# 方法1：使用awk提取前两列
+grep -v '^#' 200_samples_er_snp_filtered_vcftools.recode.vcf | awk '{print $1 "\t" $2}' > chrom_pos.txt
