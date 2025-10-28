@@ -1,12 +1,14 @@
-#移除个体ZJS_1和ZJS_10
-nohup vcftools --vcf 202_samples.merged.vcf \
-               --recode-INFO-all \
-               --out 200_samples_filtered \
-               --recode \
-               --remove-indv ZJS_1 \
-               --remove-indv ZJS_10 > vcftools.log 2>&1 &
+#移除个体ZJS_1和ZJS_10和过滤双等位基因
+nohup vcftools --gzvcf 202_samples.merged.vcf \
+         --recode-INFO-all \
+         --max-alleles 2 \
+         --min-alleles 2 \
+         --out 200_samples_bia_indel \
+         --recode \
+         --remove-indv ZJS_1 \
+         --remove-indv ZJS_10 > biallelic_filter.log 2>&1 &
 
-echo "进程 PID: $!"
+echo "双等位位点提取进程 PID: $!"
 
 #过滤质量、深度、maf、missing
 nohup vcftools --vcf 200_samples_filtered.recode.vcf \
