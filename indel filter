@@ -20,3 +20,4 @@ nohup vcftools --vcf 200_samples_bia_indel.recode.vcf \
          --out 200_samples_maf_miss > maf_miss_filter.log 2>&1 &
 
 echo "MAF和缺失率过滤进程 PID: $!"
+原始位点: 86,799个;保留位点: 55,803个;过滤掉: 30,996个位点 (约35.7%)
