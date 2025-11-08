@@ -490,7 +490,7 @@ Run Time = 55.00 seconds
 
 
 
-library(CMplot)
+> library(CMplot)
 > in_file <- "D:/QFIELS/mfSVychuan/Fst.EC.CC.table.windowed.weir.fst"
 > prefix <- "Fst"
 > # 读取数据
@@ -556,13 +556,7 @@ Fst 前5% 分位数阈值: 0.108631
 null device 
           1 
 > # 输出 PDF 图 - 使用点状图
-> pdf(paste(prefix, "_Fst_dots.pdf", sep = ""), width = 10, height = 5)
-Error in pdf(paste(prefix, "_Fst_dots.pdf", sep = ""), width = 10, height = 5) : 
-  无法打开'Fst_Fst_dots.pdf'文件
-> # 输出 PDF 图 - 使用点状图
-> pdf(paste(prefix, "EC_CC_Fst_dots.pdf", sep = ""), width = 10, height = 5)
-> # 输出 PDF 图 - 使用点状图
-> pdf(paste(prefix, "EC_CC_Fst_dots.pdf", sep = ""), width = 10, height = 5)
+> pdf(paste(prefix, "Fst_dots.pdf", sep = ""), width = 10, height = 5)
 > CMplot(
 +   Fst,
 +   type           = "p",  # 改为 "p" 表示点图
@@ -584,10 +578,10 @@ Error in pdf(paste(prefix, "_Fst_dots.pdf", sep = ""), width = 10, height = 5) :
 + )
  Rectangular Manhattan plotting val.
 > dev.off()
-pdf 
-  2 
-> cat("点状曼哈顿图已生成:", paste0(prefix, "EC_CC_Fst_dots.png 和 ", prefix, "EC_CC_Fst_dots.pdf\n"))
-点状曼哈顿图已生成: FstEC_CC_Fst_dots.png 和 FstEC_CC_Fst_dots.pdf
+null device 
+          1 
+> cat("点状曼哈顿图已生成:", paste0(prefix, "Fst_dots.png 和 ", prefix, "Fst_dots.pdf\n"))
+点状曼哈顿图已生成: FstFst_dots.png 和 FstFst_dots.pdf
 > # 输出离群区间（前5%的Fst值）
 > outlier_regions <- Fst[Fst$val >= cutoff, ]
 > cat("离群区间数量（前5%）: ", nrow(outlier_regions), "\n")
