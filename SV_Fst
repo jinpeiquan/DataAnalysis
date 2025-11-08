@@ -1,1 +1,31 @@
+#命令
+vcf=200_samples_maf_miss.recode.vcf
+window=50000
+step=10000
+vcftools  --vcf $vcf --fst-window-size $window --fst-window-step $step  --weir-fst-pop  ../../data/pop.SC.table --weir-fst-pop ../../data/pop.YZR.table --oFst.pop1.pop2
+
+
+vcftools --vcf 200_samples_maf_miss.recode.vcf --fst-window-size 50000 --fst-window-step 10000 --weir-fst-pop HD.txt --weir-fst-pop YG.txt --out Fst.HD.YG.table
+
+VCFtools - 0.1.16
+(C) Adam Auton and Anthony Marcketta 2009
+
+Parameters as interpreted:
+        --vcf 200_samples_maf_miss.recode.vcf
+        --fst-window-size 50000
+        --fst-window-step 10000
+        --weir-fst-pop HD.txt
+        --weir-fst-pop YG.txt
+        --keep HD.txt
+        --keep YG.txt
+        --out Fst.HD.YG.table
+
+Warning: Expected at least 2 parts in FORMAT entry: ID=DR,Number=2,Type=Integer,Description="# supporting reference,variant reads in that order">
+Keeping individuals in 'keep' list
+After filtering, kept 26 out of 200 Individuals
+Outputting Windowed Weir and Cockerham Fst estimates.
+Weir and Cockerham mean Fst estimate: inf
+Weir and Cockerham weighted Fst estimate: 0.20114
+After filtering, kept 55803 out of a possible 55803 Sites
+Run Time = 25.00 seconds
 
