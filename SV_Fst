@@ -665,11 +665,76 @@ Run Time = 22.00 seconds
 四、计算EC和YG两个亚群
 vcftools --vcf 200_samples_maf_miss.recode.vcf --fst-window-size 50000 --fst-window-step 10000 --weir-fst-pop EC.txt --weir-fst-pop YG.txt --out Fst.EC.YG.table
 
+VCFtools - 0.1.16
+(C) Adam Auton and Anthony Marcketta 2009
+
+Parameters as interpreted:
+        --vcf 200_samples_maf_miss.recode.vcf
+        --fst-window-size 50000
+        --fst-window-step 10000
+        --weir-fst-pop EC.txt
+        --weir-fst-pop YG.txt
+        --keep EC.txt
+        --keep YG.txt
+        --out Fst.EC.YG.table
+
+Warning: Expected at least 2 parts in FORMAT entry: ID=DR,Number=2,Type=Integer,Description="# supporting reference,variant reads in that order">
+Keeping individuals in 'keep' list
+After filtering, kept 150 out of 200 Individuals
+Outputting Windowed Weir and Cockerham Fst estimates.
+Weir and Cockerham mean Fst estimate: 0.14931
+Weir and Cockerham weighted Fst estimate: 0.1865
+After filtering, kept 55803 out of a possible 55803 Sites
+Run Time = 26.00 seconds
+
 
 五、计算CC和HD两个亚群
 vcftools --vcf 200_samples_maf_miss.recode.vcf --fst-window-size 50000 --fst-window-step 10000 --weir-fst-pop CC.txt --weir-fst-pop HD.txt --out Fst.CC.HD.table
 
+VCFtools - 0.1.16
+(C) Adam Auton and Anthony Marcketta 2009
+
+Parameters as interpreted:
+        --vcf 200_samples_maf_miss.recode.vcf
+        --fst-window-size 50000
+        --fst-window-step 10000
+        --weir-fst-pop CC.txt
+        --weir-fst-pop HD.txt
+        --keep CC.txt
+        --keep HD.txt
+        --out Fst.CC.HD.table
+
+Warning: Expected at least 2 parts in FORMAT entry: ID=DR,Number=2,Type=Integer,Description="# supporting reference,variant reads in that order">
+Keeping individuals in 'keep' list
+After filtering, kept 35 out of 200 Individuals
+Outputting Windowed Weir and Cockerham Fst estimates.
+Weir and Cockerham mean Fst estimate: 0.1644
+Weir and Cockerham weighted Fst estimate: 0.24192
+After filtering, kept 55803 out of a possible 55803 Sites
+Run Time = 25.00 seconds
+
 六、计算CC和YG两个亚群
 vcftools --vcf 200_samples_maf_miss.recode.vcf --fst-window-size 50000 --fst-window-step 10000 --weir-fst-pop CC.txt --weir-fst-pop YG.txt --out Fst.CC.YG.table
 
+VCFtools - 0.1.16
+(C) Adam Auton and Anthony Marcketta 2009
+
+Parameters as interpreted:
+        --vcf 200_samples_maf_miss.recode.vcf
+        --fst-window-size 50000
+        --fst-window-step 10000
+        --weir-fst-pop CC.txt
+        --weir-fst-pop YG.txt
+        --keep CC.txt
+        --keep YG.txt
+        --out Fst.CC.YG.table
+
+Warning: Expected at least 2 parts in FORMAT entry: ID=DR,Number=2,Type=Integer,Description="# supporting reference,variant reads in that order">
+Keeping individuals in 'keep' list
+After filtering, kept 37 out of 200 Individuals
+Outputting Windowed Weir and Cockerham Fst estimates.
+Weir and Cockerham mean Fst estimate: 0.095478
+Weir and Cockerham weighted Fst estimate: 0.128
+After filtering, kept 55803 out of a possible 55803 Sites
+Run Time = 25.00 seconds
 
