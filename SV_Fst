@@ -634,3 +634,42 @@ Fst标准差: 0.04290293
 > cat("离群区间数:", nrow(outlier_regions), "\n")
 离群区间数: 3170 
 > 
+
+
+三、计算EC和HD两个亚群
+vcftools --vcf 200_samples_maf_miss.recode.vcf --fst-window-size 50000 --fst-window-step 10000 --weir-fst-pop EC.txt --weir-fst-pop HD.txt --out Fst.EC.HD.table
+
+VCFtools - 0.1.16
+(C) Adam Auton and Anthony Marcketta 2009
+
+Parameters as interpreted:
+        --vcf 200_samples_maf_miss.recode.vcf
+        --fst-window-size 50000
+        --fst-window-step 10000
+        --weir-fst-pop EC.txt
+        --weir-fst-pop HD.txt
+        --keep EC.txt
+        --keep HD.txt
+        --out Fst.EC.HD.table
+
+Warning: Expected at least 2 parts in FORMAT entry: ID=DR,Number=2,Type=Integer,Description="# supporting reference,variant reads in that order">
+Keeping individuals in 'keep' list
+After filtering, kept 148 out of 200 Individuals
+Outputting Windowed Weir and Cockerham Fst estimates.
+Weir and Cockerham mean Fst estimate: 0.19154
+Weir and Cockerham weighted Fst estimate: 0.27301
+After filtering, kept 55803 out of a possible 55803 Sites
+Run Time = 22.00 seconds
+
+
+四、计算EC和YG两个亚群
+vcftools --vcf 200_samples_maf_miss.recode.vcf --fst-window-size 50000 --fst-window-step 10000 --weir-fst-pop EC.txt --weir-fst-pop YG.txt --out Fst.EC.YG.table
+
+
+五、计算CC和HD两个亚群
+vcftools --vcf 200_samples_maf_miss.recode.vcf --fst-window-size 50000 --fst-window-step 10000 --weir-fst-pop CC.txt --weir-fst-pop HD.txt --out Fst.CC.HD.table
+
+六、计算CC和YG两个亚群
+vcftools --vcf 200_samples_maf_miss.recode.vcf --fst-window-size 50000 --fst-window-step 10000 --weir-fst-pop CC.txt --weir-fst-pop YG.txt --out Fst.CC.YG.table
+
+
