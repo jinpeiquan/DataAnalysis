@@ -184,3 +184,133 @@ write.table(Fst, paste(prefix, "_filtered_data.txt", sep = ""),
 cat("过滤后的完整数据已保存到:", paste0(prefix, "_filtered_data.txt\n"))
 
 
+
+
+
+
+
+点图（不过滤SV小于3的区间)
+library(CMplot)
+
+in_file <- "D:/QFIELS/mfSVychuan/Fst.HD.YG.table.windowed.weir.fst"
+prefix <- "Fst"
+
+# 读取数据
+data <- read.table(in_file, header = TRUE)
+
+# 创建Fst数据框
+Fst <- data.frame(
+  ID  = paste(data$CHROM, data$BIN_START, sep=":"),
+  chr = as.numeric(gsub("chr", "", data$CHROM)),  # 去掉chr前缀并转换为数字
+  pos = (data$BIN_START + data$BIN_END) / 2,
+  val = data$WEIGHTED_FST
+)
+
+# 检查转换后的染色体
+cat("转换后的染色体范围:", range(Fst$chr, na.rm = TRUE), "\n")
+cat("染色体唯一值:", sort(unique(Fst$chr)), "\n")
+
+# 移除NA值
+Fst <- Fst[!is.na(Fst$chr), ]
+
+# 处理Fst值
+# 将小于0的Fst设为0
+Fst[Fst$val < 0, "val"] <- 0
+
+# 检查异常值
+cat("Fst值范围:", range(Fst$val, na.rm = TRUE), "\n")
+cat("Fst值大于1的数量:", sum(Fst$val > 1, na.rm = TRUE), "\n")
+
+# 如果Fst值大于1，可以截断为1（可选）
+if(any(Fst$val > 1)) {
+  Fst[Fst$val > 1, "val"] <- 1
+  cat("已将大于1的Fst值截断为1\n")
+}
+
+# 计算前5%分位数作为阈值（离群区间）
+cutoff <- quantile(Fst$val, 0.95, na.rm = TRUE)
+
+cat("Fst 前5% 分位数阈值:", cutoff, "\n")
+cat("数据点数:", nrow(Fst), "\n")
+
+# 设置染色体颜色（交替颜色）
+chr_colors <- rep(c("blue4", "orange3"), length.out = 23)
+
+# 输出 PNG 图 - 使用点状图
+png(paste(prefix, "_Fst_dots.png", sep = ""), width = 960, height = 480, res = 100)
+CMplot(
+  Fst,
+  type           = "p",  # 改为 "p" 表示点图
+  plot.type      = "m",
+  LOG10          = FALSE,
+  col            = chr_colors,
+  cex            = 0.5,  # 适当调整点的大小
+  band           = 0.5,
+  ylab.pos       = 2,
+  axis.cex       = 1,
+  threshold      = cutoff,
+  threshold.col  = 'red',
+  threshold.lty  = 2,
+  threshold.lwd  = 1,
+  amplify        = FALSE,
+  ylab           = "Fst",
+  chr.labels     = 1:23,
+  file.output    = FALSE
+)
+dev.off()
+
+# 输出 PDF 图 - 使用点状图
+pdf(paste(prefix, "_Fst_dots.pdf", sep = ""), width = 10, height = 5)
+CMplot(
+  Fst,
+  type           = "p",  # 改为 "p" 表示点图
+  plot.type      = "m",
+  LOG10          = FALSE,
+  col            = chr_colors,
+  cex            = 0.5,  # 适当调整点的大小
+  band           = 0.5,
+  ylab.pos       = 2,
+  axis.cex       = 1,
+  threshold      = cutoff,
+  threshold.col  = 'red',
+  threshold.lty  = 2,
+  threshold.lwd  = 1,
+  amplify        = FALSE,
+  ylab           = "Fst",
+  chr.labels     = 1:23,
+  file.output    = FALSE
+)
+dev.off()
+
+cat("点状曼哈顿图已生成:", paste0(prefix, "_Fst_dots.png 和 ", prefix, "_Fst_dots.pdf\n"))
+
+# 输出离群区间（前5%的Fst值）
+outlier_regions <- Fst[Fst$val >= cutoff, ]
+cat("离群区间数量（前5%）: ", nrow(outlier_regions), "\n")
+cat("离群区间占总区间的比例: ", round(nrow(outlier_regions) / nrow(Fst) * 100, 2), "%\n")
+
+if(nrow(outlier_regions) > 0) {
+  # 添加原始染色体名称
+  outlier_regions$original_chr <- paste0("chr", outlier_regions$chr)
+  outlier_regions <- outlier_regions[order(outlier_regions$chr, outlier_regions$pos), ]
+  
+  # 保存离群区间
+  write.table(outlier_regions, paste(prefix, "_outlier_regions.txt", sep = ""), 
+              row.names = FALSE, quote = FALSE, sep = "\t")
+  cat("离群区间已保存到:", paste0(prefix, "_outlier_regions.txt\n"))
+  
+  # 显示最高的10个离群区间
+  cat("\n最高的10个离群区间:\n")
+  top10 <- head(outlier_regions[order(-outlier_regions$val), ], 10)
+  print(top10[, c("original_chr", "pos", "val")])
+}
+
+# 额外的统计信息
+cat("\n=== Fst统计摘要 ===\n")
+cat("总区间数:", nrow(Fst), "\n")
+cat("Fst平均值:", mean(Fst$val, na.rm = TRUE), "\n")
+cat("Fst中位数:", median(Fst$val, na.rm = TRUE), "\n")
+cat("Fst标准差:", sd(Fst$val, na.rm = TRUE), "\n")
+cat("前5%阈值:", cutoff, "\n")
+cat("离群区间数:", nrow(outlier_regions), "\n")
+
