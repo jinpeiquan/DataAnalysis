@@ -1,1 +1,61 @@
+# 1. 排序VCF
+bgzip 200_samples_maf_miss.recode.vcf
+bcftools sort 200_samples_maf_miss.recode.vcf.gz -Oz -o 200_samples_maf_miss.sorted.vcf.gz
+bcftools index 200_samples_maf_miss.sorted.vcf.gz
+
+# 2. 验证排序
+for i in {1..12}; do
+    bcftools view -H 200_samples_maf_miss.sorted.vcf.gz -r chr${i} 2>/dev/null | awk 'prev >= $2 {print "位置乱序:", prev, $2; exit} {prev=$2}' || echo "chr$i: 位置已排序"
+done
+
+# 3. 测试运行
+xpclr --out ./test.HD.chr1 -Sa YG_clean.txt -Sb HD_new.txt -I 200_samples_maf_miss.sorted.vcf.gz -C chr1 --ld 0.95 --phased --minsnps 10 --size 10000 --step 10000
+
+1. 以YG为参考群体，检测HD中的选择信号
+for i in {1..12}
+do
+xpclr --out ./HD.chr${i} -Sa YG_clean.txt -Sb HD_new.txt -I 200_samples_maf_miss.sorted.vcf.gz -C chr${i} --ld 0.95 --phased --minsnps 2 --size 100000 --step 20000
+done
+ 
+2. 以HD为参考群体，检测YG中的选择信号
+for i in {1..12}
+do
+xpclr --out ./YG.chr${i} -Sa HD_new.txt -Sb YG_clean.txt -I 200_samples_maf_miss.sorted.vcf.gz -C chr${i} --ld 0.95 --phased --minsnps 2 --size 100000 --step 20000
+done
+
+
+批量提交到后台运行：
+# 提交HD分析（YG为参考）
+for i in {1..12}; do
+    nohup xpclr --out ./HD.chr${i} -Sa YG_clean.txt -Sb HD_new.txt -I 200_samples_maf_miss.sorted.vcf.gz -C chr${i} --ld 0.95 --phased --minsnps 2 --size 100000 --step 20000 > HD.chr${i}.log 2>&1 &
+done
+
+# 提交YG分析（HD为参考）
+for i in {1..12}; do
+    nohup xpclr --out ./YG.chr${i} -Sa HD_new.txt -Sb YG_clean.txt -I 200_samples_maf_miss.sorted.vcf.gz -C chr${i} --ld 0.95 --phased --minsnps 2 --size 100000 --step 20000 > YG.chr${i}.log 2>&1 &
+done
+
+
+
+1. 合并所有染色体的结果：
+# 合并HD分析结果
+cat HD.chr{1..12} > HD_all_chr.xpclr
+
+# 合并YG分析结果  
+cat YG.chr{1..12} > YG_all_chr.xpclr
+
+2. 去除NA值并提取top 5%：
+# 去除NA值并排序
+awk '$3 != "NA"' HD_all_chr.xpclr | sort -k3,3nr > HD_all_chr.filtered.sorted
+
+# 计算行数并提取top 5%
+total_lines=$(wc -l < HD_all_chr.filtered.sorted)
+top5_lines=$((total_lines / 20))
+head -n $top5_lines HD_all_chr.filtered.sorted > HD_top5%.xpclr
+
+# 同样处理YG
+awk '$3 != "NA"' YG_all_chr.xpclr | sort -k3,3nr > YG_all_chr.filtered.sorted
+total_lines=$(wc -l < YG_all_chr.filtered.sorted)
+top5_lines=$((total_lines / 20))
+head -n $top5_lines YG_all_chr.filtered.sorted > YG_top5%.xpclr
 
