@@ -1,1 +1,157 @@
+#使用PLINK转换SV VCF
+plink --vcf 200_samples_maf_miss.recode.vcf \
+      --recode --allow-extra-chr \
+      --out 200_samples_sv.plink
+#生成数值型基因型文件
+plink --file 200_samples_sv.plink \
+      --recodeA --allow-extra-chr \
+      --out 200_samples_sv.plink.recodeA
+第四步：格式整理为LFMM输入
+sed '1d; s/NA/9/g' 200_samples_sv.plink.recodeA.raw | \
+awk '{ $1=$2=$3=$4=$5=$6=""; print substr($0, index($0,$7)) }' > 200_samples_sv.plink.recodeA.lfmm
 
+
+
+#Pearson 相关性系数 做正方形热图
+# 加载必要的包
+library(corrplot)
+library(ggplot2)
+library(reshape2)
+library(viridis)
+
+# 设置工作目录
+setwd("D:/QFIELS/200sample/SV/GEA/LFMM")
+cat("当前工作目录:", getwd(), "\n")
+
+## 加载群体经纬度环境数据
+env_data <- read.csv("Climate_current_200samples.csv", header = TRUE, row.names = 1)
+
+## 定义所有环境变量
+xx <- c("BIO1", "BIO2", "BIO3", "BIO4", "BIO5", "BIO6", "BIO7", "BIO8", "BIO9", "BIO10", "BIO11", "BIO12", 
+        "BIO13", "BIO14", "BIO15", "BIO16", "BIO17", "BIO18", "BIO19")
+
+## 计算相关性矩阵
+cor_matrix <- cor(env_data[, xx], method = "pearson", use = "pairwise.complete.obs")
+
+## 方法1：显示完整的正方形热图
+cat("=== 方法1: 完整正方形热图 ===\n")
+
+# 设置图形参数为正方形
+par(pty = "s")
+
+# 显示完整的热图
+corrplot(cor_matrix, 
+         method = "color", 
+         type = "full",           # 改为 full 显示完整矩阵
+         order = "hclust",
+         col = colorRampPalette(c("blue", "white", "red"))(100),
+         tl.cex = 0.8,
+         tl.col = "black",
+         addCoef.col = "black",
+         number.cex = 0.6,
+         mar = c(0, 0, 2, 0),
+         title = "Correlations of bioclimatic variables",
+         cex.main = 1.2)
+
+# 重置图形参数
+par(pty = "m")
+
+
+# 计算皮尔逊相关系数矩阵
+cor_matrix <- cor(env_data[, xx], method = "pearson", use = "pairwise.complete.obs")
+
+# 获取相关性绝对值大于0.8的变量对
+high_cor <- which(abs(cor_matrix) > 0.8, arr.ind = TRUE)
+
+# 过滤掉对角线元素以及重复的组合
+high_cor <- high_cor[high_cor[,1] != high_cor[,2], ]
+high_cor <- high_cor[high_cor[,1] < high_cor[,2], ]
+
+# 打印相关性绝对值大于0.8的变量对及其相关系数
+if (nrow(high_cor) > 0) {
+  for (i in 1:nrow(high_cor)) {
+    var1 <- rownames(cor_matrix)[high_cor[i, 1]]
+    var2 <- colnames(cor_matrix)[high_cor[i, 2]]
+    cor_value <- cor_matrix[high_cor[i, 1], high_cor[i, 2]]
+    cat(sprintf("Variables: %s and %s, Correlation: %.2f\n", var1, var2, cor_value))
+  }
+} else {
+  cat("No variable pairs have a correlation above 0.8.\n")
+}
+
+#结果
+# 加载必要的包
+> library(corrplot)
+> library(ggplot2)
+> library(reshape2)
+> library(viridis)
+> # 设置工作目录
+> setwd("D:/QFIELS/200sample/SV/GEA/LFMM")
+> cat("当前工作目录:", getwd(), "\n")
+当前工作目录: D:/QFIELS/200sample/SV/GEA/LFMM 
+> ## 加载群体经纬度环境数据
+> env_data <- read.csv("Climate_current_200samples.csv", header = TRUE, row.names = 1)
+> ## 定义所有环境变量
+> xx <- c("BIO1", "BIO2", "BIO3", "BIO4", "BIO5", "BIO6", "BIO7", "BIO8", "BIO9", "BIO10", "BIO11", "BIO12", 
++         "BIO13", "BIO14", "BIO15", "BIO16", "BIO17", "BIO18", "BIO19")
+> ## 计算相关性矩阵
+> cor_matrix <- cor(env_data[, xx], method = "pearson", use = "pairwise.complete.obs")
+> ## 方法1：显示完整的正方形热图
+> cat("=== 方法1: 完整正方形热图 ===\n")
+=== 方法1: 完整正方形热图 ===
+> # 设置图形参数为正方形
+> par(pty = "s")
+> # 显示完整的热图
+> corrplot(cor_matrix, 
++          method = "color", 
++          type = "full",           # 改为 full 显示完整矩阵
++          order = "hclust",
++          col = colorRampPalette(c("blue", "white", "red"))(100),
++          tl.cex = 0.8,
++          tl.col = "black",
++          addCoef.col = "black",
++          number.cex = 0.6,
++          mar = c(0, 0, 2, 0),
++          title = "Correlations of bioclimatic variables",
++          cex.main = 1.2)
+> # 重置图形参数
+> par(pty = "m")
+> # 计算皮尔逊相关系数矩阵
+> cor_matrix <- cor(env_data[, xx], method = "pearson", use = "pairwise.complete.obs")
+> # 获取相关性绝对值大于0.8的变量对
+> high_cor <- which(abs(cor_matrix) > 0.8, arr.ind = TRUE)
+> # 过滤掉对角线元素以及重复的组合
+> high_cor <- high_cor[high_cor[,1] != high_cor[,2], ]
+> high_cor <- high_cor[high_cor[,1] < high_cor[,2], ]
+> # 打印相关性绝对值大于0.8的变量对及其相关系数
+> if (nrow(high_cor) > 0) {
++   for (i in 1:nrow(high_cor)) {
++     var1 <- rownames(cor_matrix)[high_cor[i, 1]]
++     var2 <- colnames(cor_matrix)[high_cor[i, 2]]
++     cor_value <- cor_matrix[high_cor[i, 1], high_cor[i, 2]]
++     cat(sprintf("Variables: %s and %s, Correlation: %.2f\n", var1, var2, cor_value))
++   }
++ } else {
++   cat("No variable pairs have a correlation above 0.8.\n")
++ }
+Variables: BIO2 and BIO3, Correlation: 0.91
+Variables: BIO3 and BIO4, Correlation: -0.94
+Variables: BIO1 and BIO6, Correlation: 0.92
+Variables: BIO4 and BIO7, Correlation: 0.94
+Variables: BIO1 and BIO9, Correlation: 0.84
+Variables: BIO6 and BIO9, Correlation: 0.86
+Variables: BIO5 and BIO10, Correlation: 0.99
+Variables: BIO1 and BIO11, Correlation: 0.82
+Variables: BIO6 and BIO11, Correlation: 0.92
+Variables: BIO9 and BIO11, Correlation: 0.91
+Variables: BIO12 and BIO13, Correlation: 0.94
+Variables: BIO12 and BIO14, Correlation: 0.80
+Variables: BIO12 and BIO16, Correlation: 0.93
+Variables: BIO13 and BIO16, Correlation: 0.96
+Variables: BIO14 and BIO17, Correlation: 0.95
+Variables: BIO13 and BIO18, Correlation: 0.80
+Variables: BIO12 and BIO19, Correlation: 0.88
+Variables: BIO14 and BIO19, Correlation: 0.91
+Variables: BIO16 and BIO19, Correlation: 0.81
+Variables: BIO17 and BIO19, Correlation: 0.91
+> 
