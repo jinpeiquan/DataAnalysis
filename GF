@@ -80,3 +80,129 @@ print(population_counts)
 
 cat("\n=== 处理完成！ ===\n")
 
+*计算频率
+# 设置工作目录
+setwd("D:/QFIELS/200sample/SV/GEA/LFMM")
+
+# 1. 读取修改后的.nosex文件
+cat("=== 读取群体分配文件 ===\n")
+nosex_data <- read.table("200_samples_sv.plink.recodeA.nosex", 
+                         header = FALSE,
+                         sep = "\t",
+                         col.names = c("Population", "Individual"))
+
+cat("总个体数:", nrow(nosex_data), "\n")
+
+# 创建完整的个体ID
+nosex_data$FullID <- paste0(nosex_data$Population, "_", nosex_data$Individual)
+
+# 群体统计
+population_counts <- table(nosex_data$Population)
+cat("群体数:", length(population_counts), "\n")
+
+# 2. 读取.map文件获取SV坐标
+cat("\n=== 读取SV坐标信息 ===\n")
+map_data <- read.table("200_samples_sv.plink.map", 
+                       header = FALSE,
+                       col.names = c("Chromosome", "VariantID", "GeneticPos", "PhysicalPos"))
+
+sv_names <- paste0("Chr", map_data$Chromosome, ":", map_data$PhysicalPos)
+cat("SV总数:", length(sv_names), "\n")
+
+# 3. 读取.lfmm文件（基因型数据）
+cat("\n=== 读取基因型数据 ===\n")
+lfmm_data <- read.table("200_samples_sv.plink.recodeA.lfmm", 
+                        header = FALSE)
+
+genotype_matrix <- as.matrix(lfmm_data)
+cat("基因型数据原始维度:", dim(genotype_matrix), "\n")
+
+# 检查并设置维度
+if (ncol(genotype_matrix) == nrow(nosex_data)) {
+  colnames(genotype_matrix) <- nosex_data$FullID
+  rownames(genotype_matrix) <- sv_names
+  cat("设置列名为个体ID，行名为SV坐标\n")
+} else if (nrow(genotype_matrix) == nrow(nosex_data)) {
+  genotype_matrix <- t(genotype_matrix)
+  colnames(genotype_matrix) <- nosex_data$FullID
+  rownames(genotype_matrix) <- sv_names
+  cat("转置后设置列名为个体ID，行名为SV坐标\n")
+} else {
+  stop("错误：维度不匹配")
+}
+
+cat("最终基因型矩阵维度:", dim(genotype_matrix), "\n")
+
+# 4. 等位基因频率计算函数（修正为正确的gradientForest格式）
+calculate_maf <- function(genotypes) {
+  genotypes <- genotypes[genotypes != 9]  # 移除缺失值
+  if (length(genotypes) == 0) return(NA)
+  
+  ref_alleles <- sum(genotypes == 0) * 2 + sum(genotypes == 1)
+  alt_alleles <- sum(genotypes == 2) * 2 + sum(genotypes == 1)
+  total_alleles <- ref_alleles + alt_alleles
+  
+  if (total_alleles == 0) return(NA)
+  
+  maf <- min(ref_alleles, alt_alleles) / total_alleles
+  return(maf)
+}
+
+calculate_population_maf_correct_format <- function(genotype_matrix, population_info) {
+  populations <- unique(population_info$Population)
+  maf_matrix <- matrix(nrow = length(populations), ncol = nrow(genotype_matrix))
+  rownames(maf_matrix) <- populations  # 行名 = 群体名称
+  colnames(maf_matrix) <- rownames(genotype_matrix)  # 列名 = SV坐标
+  
+  cat("计算等位基因频率（gradientForest格式）...\n")
+  total_snps <- ncol(maf_matrix)
+  
+  for (pop_idx in 1:length(populations)) {
+    pop <- populations[pop_idx]
+    cat("处理群体", pop_idx, "/", length(populations), ":", pop, "\n")
+    
+    pop_individuals <- population_info$FullID[population_info$Population == pop]
+    
+    for (i in 1:total_snps) {
+      pop_genotypes <- genotype_matrix[i, pop_individuals]
+      maf_matrix[pop_idx, i] <- calculate_maf(pop_genotypes)
+    }
+  }
+  
+  return(maf_matrix)
+}
+
+# 5. 计算等位基因频率（正确格式）
+cat("\n=== 开始计算等位基因频率（gradientForest格式） ===\n")
+maf_matrix_correct <- calculate_population_maf_correct_format(genotype_matrix, nosex_data)
+
+# 6. 保存结果（正确格式）
+cat("\n=== 保存结果 ===\n")
+write.csv(maf_matrix_correct, "population_maf_matrix_gradientforest_format.csv")
+cat("gradientForest格式的等位基因频率矩阵已保存\n")
+
+# 7. 验证格式
+cat("\n=== 格式验证 ===\n")
+cat("矩阵维度:", dim(maf_matrix_correct), "\n")
+cat("行名（群体）:", rownames(maf_matrix_correct), "\n")
+cat("列名（SV坐标）示例:", head(colnames(maf_matrix_correct)), "\n")
+
+cat("\n前5个群体，前5个SV的MAF:\n")
+print(maf_matrix_correct[1:5, 1:5])
+
+# 8. 保存统计信息
+maf_stats <- data.frame(
+  Population = rownames(maf_matrix_correct),
+  Sample_Size = as.numeric(population_counts[rownames(maf_matrix_correct)]),
+  Mean_MAF = round(rowMeans(maf_matrix_correct, na.rm = TRUE), 4),
+  Missing_Rate = round(rowSums(is.na(maf_matrix_correct)) / ncol(maf_matrix_correct), 4)
+)
+
+write.csv(maf_stats, "maf_statistics_summary.csv")
+cat("统计信息已保存: maf_statistics_summary.csv\n")
+
+cat("\n=== 处理完成！ ===\n")
+cat("现在您的文件格式是正确的：\n")
+cat("- 第一行（列名）: SV坐标（Chr1:5937, Chr1:13832, ...）\n")
+cat("- 第一列（行名）: 群体名称（CP, CX, DA, ...）\n")
+cat("这个格式可以直接用于gradientForest分析！\n")
