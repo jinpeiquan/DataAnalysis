@@ -1,1 +1,82 @@
+# 设置工作目录
+setwd("D:/QFIELS/200sample/SV/GEA/LFMM/Pearson")
+
+# 1. 正确读取逗号分隔的CSV文件
+cat("=== 正确读取环境数据 ===\n")
+
+# 读取原始数据
+raw_data <- readLines("Climate_current_200samples.csv")
+cat("文件总行数:", length(raw_data), "\n")
+
+# 查看第一行（列名）
+cat("第一行（列名）:", raw_data[1], "\n")
+
+# 分割数据
+split_data <- strsplit(raw_data, ",")
+
+# 创建数据框
+env_data <- as.data.frame(do.call(rbind, split_data))
+
+# 设置列名（使用第一行）
+colnames(env_data) <- as.character(env_data[1, ])
+env_data <- env_data[-1, ]  # 移除标题行
+
+cat("正确分割后的数据维度:", dim(env_data), "\n")
+cat("列名:", colnames(env_data), "\n")
+
+# 2. 转换数值列
+# 除了前3列（ind, lon, lat），其他都是数值
+for (i in 4:ncol(env_data)) {
+  env_data[[i]] <- as.numeric(as.character(env_data[[i]]))
+}
+
+cat("\n前6行数据:\n")
+print(head(env_data[, 1:10]))  # 只显示前10列
+
+# 3. 提取群体名称
+env_data$Population <- gsub("-.*", "", env_data$ind)
+cat("\n提取的群体:", unique(env_data$Population), "\n")
+
+# 4. 定义环境变量
+env_vars <- c("BIO1", "BIO2", "BIO3", "BIO4", "BIO5", "BIO6", "BIO7", "BIO8", "BIO9", "BIO10", 
+              "BIO11", "BIO12", "BIO13", "BIO14", "BIO15", "BIO16", "BIO17", "BIO18", "BIO19")
+
+# 检查哪些环境变量存在
+available_env_vars <- env_vars[env_vars %in% colnames(env_data)]
+cat("可用的环境变量:", available_env_vars, "\n")
+
+# 5. 计算每个群体的环境变量平均值
+cat("\n=== 计算群体环境平均值 ===\n")
+population_means <- aggregate(env_data[, available_env_vars], 
+                              by = list(Population = env_data$Population), 
+                              FUN = mean, 
+                              na.rm = TRUE)
+
+cat("群体环境平均值（前5个群体）:\n")
+print(head(population_means, 5))
+
+# 6. 计算样本数量
+population_counts <- table(env_data$Population)
+population_info <- data.frame(
+  Population = names(population_counts),
+  Sample_Size = as.numeric(population_counts)
+)
+
+# 7. 合并平均值和样本数量
+final_result <- merge(population_means, population_info, by = "Population")
+
+# 8. 保存结果
+write.csv(final_result, "population_environment_means_correct.csv", row.names = FALSE)
+cat("\n群体环境平均值已保存: population_environment_means_correct.csv\n")
+
+# 9. 结果统计
+cat("\n=== 结果统计 ===\n")
+cat("总群体数:", nrow(final_result), "\n")
+cat("总样本数:", sum(final_result$Sample_Size), "\n")
+cat("环境变量数:", length(available_env_vars), "\n")
+
+cat("\n各群体样本数量:\n")
+print(population_counts)
+
+cat("\n=== 处理完成！ ===\n")
 
