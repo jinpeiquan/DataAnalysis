@@ -164,7 +164,7 @@ getwd()
 setwd("D:/QFIELS/200sample/SV/GEA/LFMM")
 getwd()
 
-## 加载群体经纬度环境数据
+## 加载个体经纬度环境数据
 env_data = read.csv("Climate_current_200samples.csv",
                     header = T, row.names = 1)
 
