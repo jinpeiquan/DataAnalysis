@@ -23,7 +23,7 @@ library(viridis)
 setwd("D:/QFIELS/200sample/SV/GEA/LFMM")
 cat("当前工作目录:", getwd(), "\n")
 
-## 加载群体经纬度环境数据
+## 加载个体经纬度环境数据
 env_data <- read.csv("Climate_current_200samples.csv", header = TRUE, row.names = 1)
 
 ## 定义所有环境变量
