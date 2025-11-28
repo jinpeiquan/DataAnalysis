@@ -152,4 +152,19 @@ chmod +x fix_jmx_wyl_maf.sh
 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 变成转置格式
 
-
+awk -F',' '
+{
+    for (i=1; i<=NF; i++) {
+        a[NR,i] = $i
+    }
+}
+NF>p { p = NF }
+END {
+    for(j=1; j<=p; j++) {
+        str=a[1,j]
+        for(i=2; i<=NR; i++){
+            str=str","a[i,j];
+        }
+        print str
+    }
+}' population_maf_matrix_200samples.csv > population_maf_matrix_200samples_transposed.csv
