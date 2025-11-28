@@ -177,3 +177,64 @@ print("Original data: {} rows x {} columns".format(len(data), len(data[0]) if da
 print("Transposed data: {} rows x {} columns".format(len(transposed_data), len(transposed_data[0]) if transposed_data else 0))
 
 python transpose_python2.py
+
+二、
+# 重新合并为转置格式（群体为行，SV为列）
+echo "=== 重新合并为转置格式 ==="
+
+# 获取所有有效的.frq文件
+frq_files=$(find "population_maf_results_200samples" -name "*_population_maf.frq" -size +1k | sort)
+
+if [ -n "$frq_files" ]; then
+    echo "找到 $(echo "$frq_files" | wc -l) 个有效的.frq文件"
+    
+    # 创建临时目录
+    mkdir -p population_maf_results_200samples/temp_ids
+    
+    # 1. 获取所有SV的列表（从第一个文件）
+    first_file=$(echo "$frq_files" | head -1)
+    echo "获取SV列表..."
+    awk -F'\t' 'NR>1 {print $3}' "$first_file" > "population_maf_results_200samples/temp_ids/all_svs.txt"
+    
+    # 2. 创建表头：第一列是"Population"，然后是所有SV
+    echo -n "Population" > "population_maf_matrix_200samples.csv"
+    while read sv; do
+        echo -n ",$sv" >> "population_maf_results_200samples/temp_ids/header.txt"
+    done < "population_maf_results_200samples/temp_ids/all_svs.txt"
+    echo "" >> "population_maf_results_200samples/temp_ids/header.txt"
+    
+    cat "population_maf_results_200samples/temp_ids/header.txt" >> "population_maf_matrix_200samples.csv"
+    
+    # 3. 为每个群体创建一行数据
+    for file in $frq_files; do
+        pop=$(basename "$file" | sed 's/_population_maf.frq//')
+        echo "处理群体: $pop"
+        
+        # 创建该群体的MAF行
+        echo -n "$pop" > "population_maf_results_200samples/temp_ids/${pop}_row.txt"
+        
+        # 提取该群体的所有MAF值（按SV顺序）
+        awk -F'\t' 'NR>1 {print $6}' "$file" | while read maf; do
+            echo -n ",$maf" >> "population_maf_results_200samples/temp_ids/${pop}_row.txt"
+        done
+        echo "" >> "population_maf_results_200samples/temp_ids/${pop}_row.txt"
+        
+        # 添加到主文件
+        cat "population_maf_results_200samples/temp_ids/${pop}_row.txt" >> "population_maf_matrix_200samples.csv"
+    done
+    
+    # 清理临时文件
+    rm -rf "population_maf_results_200samples/temp_ids"
+    
+    echo "✓ 转置格式MAF矩阵生成完成: population_maf_matrix_200samples.csv"
+    echo "矩阵信息:"
+    wc -l "population_maf_matrix_200samples.csv"
+    echo "前5行预览:"
+    head -5 "population_maf_matrix_200samples.csv" | cut -c1-100
+    echo "..."
+    echo "群体数量: $(($(wc -l < "population_maf_matrix_200samples.csv") - 1))"
+    echo "SV数量: $(($(head -1 "population_maf_matrix_200samples.csv" | tr ',' '\n' | wc -l) - 1))"
+    
+else
+    echo "✗ 未找到有效的.frq文件"
+fi
