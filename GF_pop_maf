@@ -1,0 +1,155 @@
+# 创建一个完整的修复脚本
+cat > fix_jmx_wyl_maf.sh << 'EOF'
+#!/bin/bash
+
+echo "=== 修复JMX和WYL群体的MAF计算 ==="
+
+# 重新计算JMX群体MAF
+echo "=== 重新计算JMX群体MAF ==="
+jmx_samples="JMX_1,JMX_2,JMX_3,JMX-15,JMX-16,JMX-17,JMX-18,JMX-19"
+echo "JMX样本: $jmx_samples"
+
+bcftools query -f '%CHROM\t%POS\t%ID\t%REF\t%ALT[\t%GT]\n' \
+               -s "$jmx_samples" \
+               --force-samples \
+               "200_samples_maf_miss.recode.vcf" 2>/dev/null | \
+awk '
+BEGIN {
+    OFS="\t"
+    print "CHR", "POS", "SNP", "A1", "A2", "MAF", "NCHROBS"
+}
+{
+    total_alleles = 0
+    ref_count = 0
+    alt_count = 0
+    
+    for(i=6;i<=NF;i++) {
+        gsub("\\|", "/", $i)
+        split($i, gt, "/")
+        for(a in gt) {
+            if(gt[a] == "0") ref_count++
+            else if(gt[a] == "1") alt_count++
+            if(gt[a] == "0" || gt[a] == "1") total_alleles++
+        }
+    }
+    
+    if(total_alleles > 0) {
+        maf_ref = ref_count / total_alleles
+        maf_alt = alt_count / total_alleles
+        maf = (maf_ref < maf_alt) ? maf_ref : maf_alt
+        print $1, $2, $3, $4, $5, maf, total_alleles
+    }
+}' > "population_maf_results_200samples/JMX_population_maf.frq"
+
+if [ -s "population_maf_results_200samples/JMX_population_maf.frq" ]; then
+    sv_count=$(tail -n +2 "population_maf_results_200samples/JMX_population_maf.frq" | wc -l)
+    echo "✓ JMX群体MAF计算成功: $sv_count 个SV"
+else
+    echo "✗ JMX群体MAF计算失败"
+fi
+
+# 重新计算WYL群体MAF
+echo "=== 重新计算WYL群体MAF ==="
+wyl_samples="WYL-2,WYL_3,WYL_4,WYL-5,WYL-6,WYL-7,WYL_8"
+echo "WYL样本: $wyl_samples"
+
+bcftools query -f '%CHROM\t%POS\t%ID\t%REF\t%ALT[\t%GT]\n' \
+               -s "$wyl_samples" \
+               --force-samples \
+               "200_samples_maf_miss.recode.vcf" 2>/dev/null | \
+awk '
+BEGIN {
+    OFS="\t"
+    print "CHR", "POS", "SNP", "A1", "A2", "MAF", "NCHROBS"
+}
+{
+    total_alleles = 0
+    ref_count = 0
+    alt_count = 0
+    
+    for(i=6;i<=NF;i++) {
+        gsub("\\|", "/", $i)
+        split($i, gt, "/")
+        for(a in gt) {
+            if(gt[a] == "0") ref_count++
+            else if(gt[a] == "1") alt_count++
+            if(gt[a] == "0" || gt[a] == "1") total_alleles++
+        }
+    }
+    
+    if(total_alleles > 0) {
+        maf_ref = ref_count / total_alleles
+        maf_alt = alt_count / total_alleles
+        maf = (maf_ref < maf_alt) ? maf_ref : maf_alt
+        print $1, $2, $3, $4, $5, maf, total_alleles
+    }
+}' > "population_maf_results_200samples/WYL_population_maf.frq"
+
+if [ -s "population_maf_results_200samples/WYL_population_maf.frq" ]; then
+    sv_count=$(tail -n +2 "population_maf_results_200samples/WYL_population_maf.frq" | wc -l)
+    echo "✓ WYL群体MAF计算成功: $sv_count 个SV"
+else
+    echo "✗ WYL群体MAF计算失败"
+fi
+
+echo "=== 合并所有群体MAF结果 ==="
+
+# 获取所有有效的.frq文件
+frq_files=$(find "population_maf_results_200samples" -name "*_population_maf.frq" -size +1k | sort)
+
+if [ -n "$frq_files" ]; then
+    echo "找到 $(echo "$frq_files" | wc -l) 个有效的.frq文件"
+    
+    # 创建表头
+    header="SV"
+    for file in $frq_files; do
+        pop=$(basename "$file" | sed 's/_population_maf.frq//')
+        header="$header,$pop"
+    done
+    echo "$header" > "population_maf_matrix_200samples.csv"
+    
+    # 使用第一个文件作为基础
+    first_file=$(echo "$frq_files" | head -1)
+    echo "使用基础文件: $(basename "$first_file")"
+    
+    # 创建临时目录
+    mkdir -p population_maf_results_200samples/temp_ids
+    
+    # 提取SV列表
+    awk -F'\t' 'NR>1 {print $3}' "$first_file" > "population_maf_results_200samples/temp_ids/sv_list.txt"
+    
+    # 为每个群体提取MAF值
+    for file in $frq_files; do
+        pop=$(basename "$file" | sed 's/_population_maf.frq//')
+        echo "处理群体: $pop"
+        awk -F'\t' 'NR>1 {print $6}' "$file" > "population_maf_results_200samples/temp_ids/${pop}_maf.txt"
+    done
+    
+    # 合并所有文件
+    paste -d',' "population_maf_results_200samples/temp_ids/sv_list.txt" "population_maf_results_200samples/temp_ids"/*_maf.txt >> "population_maf_matrix_200samples.csv"
+    
+    # 清理临时文件
+    rm -rf "population_maf_results_200samples/temp_ids"
+    
+    echo "✓ MAF矩阵生成完成: population_maf_matrix_200samples.csv"
+    echo "矩阵信息:"
+    wc -l "population_maf_matrix_200samples.csv"
+    echo "群体数量: $(($(head -1 "population_maf_matrix_200samples.csv" | tr ',' '\n' | wc -l) - 1))"
+else
+    echo "✗ 未找到有效的.frq文件"
+fi
+
+echo "===== 完成！ ====="
+EOF
+
+# 给脚本执行权限并运行
+chmod +x fix_jmx_wyl_maf.sh
+./fix_jmx_wyl_maf.sh
+
+
+
+
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+变成转置格式
+
+
