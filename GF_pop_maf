@@ -152,19 +152,28 @@ chmod +x fix_jmx_wyl_maf.sh
 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 变成转置格式
 
-awk -F',' '
-{
-    for (i=1; i<=NF; i++) {
-        a[NR,i] = $i
-    }
-}
-NF>p { p = NF }
-END {
-    for(j=1; j<=p; j++) {
-        str=a[1,j]
-        for(i=2; i<=NR; i++){
-            str=str","a[i,j];
-        }
-        print str
-    }
-}' population_maf_matrix_200samples.csv > population_maf_matrix_200samples_transposed.csv
+nano transpose_python2.py
+
+
+输入
+import csv
+
+# Read the original CSV file
+with open('population_maf_matrix_200samples.csv', 'r') as f:
+    reader = csv.reader(f)
+    data = list(reader)
+
+# Transpose the data
+transposed_data = list(zip(*data))
+
+# Write the transposed data to a new file
+with open('population_maf_matrix_200samples_transposed_final.csv', 'w') as f:
+    writer = csv.writer(f)
+    for row in transposed_data:
+        writer.writerow(row)
+
+print("Transpose completed successfully!")
+print("Original data: {} rows x {} columns".format(len(data), len(data[0]) if data else 0))
+print("Transposed data: {} rows x {} columns".format(len(transposed_data), len(transposed_data[0]) if transposed_data else 0))
+
+python transpose_python2.py
