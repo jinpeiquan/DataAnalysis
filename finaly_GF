@@ -218,3 +218,226 @@ cat("分析完成时间:", as.character(model_summary$timestamp), "\n")
 cat("\n梯度森林分析已完成！所有结果保存在以下目录：\n")
 cat("结果文件:", result_dir, "\n")
 cat("图片文件:", picture_dir, "\n")
+
+
+
+
+
+结果
+ # 设置工作目录
+> setwd("D:/QFIELS/200sample/SV/GEA/LFMM/GF/result")
+> getwd()
+[1] "D:/QFIELS/200sample/SV/GEA/LFMM/GF/result"
+> # 设置输出文件夹
+> result_dir <- "final_result"
+> picture_dir <- "final_picture"
+> Local_GO_dir <- "Local_Genetic_Offset_2.5m"
+> Forward_GO_dir <- "Forward_Genetic_Offset_2.5m"
+> Reverse_GO_dir <- "Reverse_Genetic_Offset_2.5m"
+> # 创建输出目录
+> if (!dir.exists(result_dir)) dir.create(result_dir)
+> if (!dir.exists(picture_dir)) dir.create(picture_dir)
+> if (!dir.exists(Local_GO_dir)) dir.create(Local_GO_dir)
+> if (!dir.exists(Forward_GO_dir)) dir.create(Forward_GO_dir)
+> if (!dir.exists(Reverse_GO_dir)) dir.create(Reverse_GO_dir)
+> # 导入群体等位基因频率数据
+> PopsMaf <- fread("population_maf_matrix_200samples_transposed_final.csv")
+> cat("等位基因频率数据维度:", dim(PopsMaf), "\n")
+等位基因频率数据维度: 31 55804 
+> # 检查数据格式
+> if ("V1" %in% colnames(PopsMaf)) {
++   setnames(PopsMaf, old = "V1", new = "pop")
++ }
+> cat("列名:", colnames(PopsMaf)[1:5], "...\n")
+列名: SV >189>192 >438>442 >492>495 >550>554 ...
+> # 设置行名并转换为数据框
+> setDF(PopsMaf)
+> if ("pop" %in% colnames(PopsMaf)) {
++   rownames(PopsMaf) <- PopsMaf$pop
++   PopsMaf <- PopsMaf[, -which(colnames(PopsMaf) == "pop"), drop = FALSE]
++ } else {
++   # 如果第一列没有列名，使用第一列作为行名
++   rownames(PopsMaf) <- PopsMaf[[1]]
++   PopsMaf <- PopsMaf[, -1, drop = FALSE]
++ }
+> # 按行名排序并去除缺失值
+> PopsMaf <- PopsMaf[order(rownames(PopsMaf)), ]
+> PopsMaf <- PopsMaf %>% dplyr::select(where(~ !any(is.na(.))))
+> cat("清理后的等位基因频率数据维度:", dim(PopsMaf), "\n")
+清理后的等位基因频率数据维度: 31 55611 
+> # 导入环境数据
+> CurrentEnvs <- read.csv('population_environment_means_correct.csv', header = TRUE, row.names = 1)
+> cat("环境数据维度:", dim(CurrentEnvs), "\n")
+环境数据维度: 31 22 
+> cat("环境数据列名:", colnames(CurrentEnvs), "\n")
+环境数据列名: lon lat BIO1 BIO2 BIO3 BIO4 BIO5 BIO6 BIO7 BIO8 BIO9 BIO10 BIO11 BIO12 BIO13 BIO14 BIO15 BIO16 BIO17 BIO18 BIO19 Sample_Size 
+> # 选择所有bio1-19环境因子
+> PredictEnvs <- paste0("BIO", 1:19)
+> cat("选择的预测环境因子:", PredictEnvs, "\n")
+选择的预测环境因子: BIO1 BIO2 BIO3 BIO4 BIO5 BIO6 BIO7 BIO8 BIO9 BIO10 BIO11 BIO12 BIO13 BIO14 BIO15 BIO16 BIO17 BIO18 BIO19 
+> # 检查所选环境变量是否存在
+> available_envs <- intersect(PredictEnvs, colnames(CurrentEnvs))
+> if (length(available_envs) < length(PredictEnvs)) {
++   missing_envs <- setdiff(PredictEnvs, colnames(CurrentEnvs))
++   warning("以下环境变量在数据中不存在: ", paste(missing_envs, collapse = ", "))
++   PredictEnvs <- available_envs
++ }
+> CurrentEnvs <- CurrentEnvs[, PredictEnvs, drop = FALSE]
+> cat("最终使用的环境变量:", colnames(CurrentEnvs), "\n")
+最终使用的环境变量: BIO1 BIO2 BIO3 BIO4 BIO5 BIO6 BIO7 BIO8 BIO9 BIO10 BIO11 BIO12 BIO13 BIO14 BIO15 BIO16 BIO17 BIO18 BIO19 
+> # 检查群体名称是否匹配
+> common_pops <- intersect(rownames(PopsMaf), rownames(CurrentEnvs))
+> cat("共有群体数量:", length(common_pops), "\n")
+共有群体数量: 31 
+> if (length(common_pops) == 0) {
++   stop("错误：环境数据和等位基因频率数据的群体名称不匹配！")
++ }
+> # 只保留共有的群体
+> PopsMaf <- PopsMaf[common_pops, , drop = FALSE]
+> CurrentEnvs <- CurrentEnvs[common_pops, , drop = FALSE]
+> cat("筛选后的等位基因频率数据维度:", dim(PopsMaf), "\n")
+筛选后的等位基因频率数据维度: 31 55611 
+> cat("筛选后的环境数据维度:", dim(CurrentEnvs), "\n")
+筛选后的环境数据维度: 31 19 
+> # 计算maxLevel，用于树的最大深度
+> maxLevel <- log2(0.368 * nrow(PopsMaf) / 2)
+> cat("maxLevel:", maxLevel, "\n")
+maxLevel: 2.511974 
+> # 合并环境数据和等位基因频率
+> Envs_Maf <- cbind(CurrentEnvs[, PredictEnvs], PopsMaf)
+> cat("合并后的数据维度:", dim(Envs_Maf), "\n")
+合并后的数据维度: 31 55630 
+> # 构建梯度森林模型
+> cat("开始构建梯度森林模型...\n")
+开始构建梯度森林模型...
+> gf.mod <- gradientForest(Envs_Maf,
++                          predictor.vars = colnames(CurrentEnvs),
++                          response.vars = colnames(PopsMaf),
++                          ntree = 1000, 
++                          maxLevel = maxLevel, 
++                          trace = TRUE,
++                          corr.threshold = 0.50,  
++                          nbin = 1001, 
++                          check.names = FALSE)
+Calculating forests for 55611 species
+.....................................警告多于50个(用warnings()来显示第一个到第50个)
+> cat("梯度森林模型构建完成！\n")
+梯度森林模型构建完成！
+> # 保存GF模型结果
+> save(gf.mod, file = paste0(result_dir, "/gf_model_complete.RData"))
+> cat("模型已保存到:", paste0(result_dir, "/gf_model_complete.RData"), "\n")
+模型已保存到: final_result/gf_model_complete.RData 
+> # 绘制预测变量重要性排序图
+> pdf(file = paste0(picture_dir, "/gf_mod_Importance.pdf"), width = 10, height = 6) 
+> plot(gf.mod, plot.type = "Overall.Importance", 
++      col = rainbow(length(PredictEnvs)),
++      las = 2, cex.names = 0.8) 
+> dev.off() 
+null device 
+          1 
+> cat("变量重要性图已保存\n")
+变量重要性图已保存
+> # 保存梯度森林模型的输出结果
+> write.table(gf.mod$Y, file = paste0(result_dir, "/gf_mod_Y.txt"))
+> write.table(gf.mod$X, file = paste0(result_dir, "/gf_mod_X.txt"))
+> write.table(gf.mod$imp.rsq, file = paste0(result_dir, "/gf_mod_imp_rsq.txt"))
+> write.table(gf.mod$result, file = paste0(result_dir, "/gf_mod_result.txt"))
+> cat("模型输出结果已保存\n")
+模型输出结果已保存
+> # 为每个环境因子绘制分割密度图
+> cat("开始绘制分割密度图...\n")
+开始绘制分割密度图...
+> for (env_var in PredictEnvs) {
++   pdf(file = paste0(picture_dir, "/splits_density_plots_", env_var, ".pdf"), 
++       width = 8, height = 6)
++   plot(gf.mod, plot.type = "S", imp.vars = env_var, leg.posn = "topright", 
++        cex.legend = 1.2, cex.axis = 1.0, cex.lab = 1.2, line.ylab = 0.2, 
++        par.args = list(mgp = c(2, 0.5, 0), mar = c(3, 2, 0.1, 0.5)))
++   dev.off()
++ }
+共有19个警告 (用warnings()来显示)
+> cat("分割密度图绘制完成\n")
+分割密度图绘制完成
+> # 绘制所有环境因子的累积重要性图（共同尺度）
+> pdf(file = paste0(picture_dir, "/All_env_factor_cumulative_plot_common_scale.pdf"), 
++     width = 16, height = 18)
+> plot(gf.mod, plot.type = "Cumulative.Importance", 
++      imp.vars = PredictEnvs, 
++      show.overall = TRUE, legend = TRUE, leg.posn = "topleft", leg.nspecies = 5,
++      common.scale = TRUE, cex.lab = 1.4, cex.legend = 1.2, cex.axis = 1.4, 
++      line.ylab = 1.8, par.args = list(mgp = c(2, 0.8, 0), mar = c(4, 2.2, 0.2, 1),
++                                       omi = c(0, 0.6, 0.1, 0)))
+> dev.off()
+null device 
+          1 
+> cat("累积重要性图（共同尺度）已保存\n")
+累积重要性图（共同尺度）已保存
+> # 为每个环境因子单独绘制累积重要性图
+> cat("开始绘制单个环境因子的累积重要性图...\n")
+开始绘制单个环境因子的累积重要性图...
+> for (env_factor in PredictEnvs) {
++   pdf_file <- paste0(picture_dir, "/cumulative_plot_", env_factor, ".pdf")
++   pdf(file = pdf_file, width = 6, height = 8)
++   plot(gf.mod, plot.type = "Cumulative.Importance", imp.vars = env_factor, leg.nspecies = 5,
++        show.overall = TRUE, legend = TRUE, leg.posn = "topleft", common.scale = TRUE, 
++        cex.lab = 1, cex.legend = 0.7, cex.axis = 1, line.ylab = 2,
++        par.args = list(mgp = c(2, 0.5, 0), mar = c(0.5, 0.2, 0.2, 1), 
++                        omi = c(0.3, 0.7, 0.1, 0.1)))
++   dev.off()
++ }
+> cat("单个环境因子累积重要性图绘制完成\n")
+单个环境因子累积重要性图绘制完成
+> # 显示所有预测因子的累积变化
+> pdf(file = paste0(picture_dir, "/All_predictor_cumulative_common_scale.pdf"), 
++     width = 10, height = 8)
+> plot(gf.mod, plot.type = "C", imp.vars = PredictEnvs, show.species = FALSE, 
++      common.scale = TRUE, cex.axis = 1, cex.lab = 1.2, line.ylab = 0.8, 
++      par.args = list(mgp = c(1.7, 0.5, 0), mar = c(3, 2, 0.1, 0.5), 
++                      omi = c(0, 0.3, 0.05, 0.1)))
+> dev.off()
+null device 
+          1 
+> cat("所有预测因子累积变化图已保存\n")
+所有预测因子累积变化图已保存
+> # R2 重要性性能图
+> pdf(file = paste0(picture_dir, "/R2_performance_rank.pdf"), width = 8, height = 8)
+> plot(gf.mod, plot.type = "Performance", show.names = TRUE, horizontal = TRUE, 
++      cex.axis = 1.2, cex.labels = 0.8, line = 2, 
++      par.args = list(mgp = c(0, 0.8, 0),
++                      mar = c(4, 7, 2, 0.5), omi = c(0, 0, 0.1, 0.1)))
+> dev.off()
+null device 
+          1 
+> cat("R2性能图已保存\n")
+R2性能图已保存
+> # 生成模型摘要
+> model_summary <- list(
++   n_pops = nrow(PopsMaf),
++   n_loci = ncol(PopsMaf),
++   n_env_vars = length(PredictEnvs),
++   env_variables = PredictEnvs,
++   importance_scores = gf.mod$imp.rsq,
++   model_performance = gf.mod$result,
++   timestamp = Sys.time()
++ )
+> cat("\n=== 模型构建摘要 ===\n")
+
+=== 模型构建摘要 ===
+> cat("群体数量:", model_summary$n_pops, "\n")
+群体数量: 31 
+> cat("位点数量:", model_summary$n_loci, "\n")
+位点数量: 55611 
+> cat("环境变量数量:", model_summary$n_env_vars, "\n")
+环境变量数量: 19 
+> cat("环境变量:", paste(model_summary$env_variables, collapse = ", "), "\n")
+环境变量: BIO1, BIO2, BIO3, BIO4, BIO5, BIO6, BIO7, BIO8, BIO9, BIO10, BIO11, BIO12, BIO13, BIO14, BIO15, BIO16, BIO17, BIO18, BIO19 
+> cat("分析完成时间:", as.character(model_summary$timestamp), "\n")
+分析完成时间: 2025-12-01 14:21:04.915723 
+> cat("\n梯度森林分析已完成！所有结果保存在以下目录：\n")
+
+梯度森林分析已完成！所有结果保存在以下目录：
+> cat("结果文件:", result_dir, "\n")
+结果文件: final_result 
+> cat("图片文件:", picture_dir, "\n")
+图片文件: final_picture 
+> 
