@@ -1,1 +1,1652 @@
+##############################################################################
+# 完整的LFMM分析代码 - 使用修正方法提取SV标识符
+##############################################################################
 
+# 清空工作空间
+rm(list = ls())
+gc()
+
+# 加载必要的包
+library(lfmm)
+library(qvalue)  
+library(data.table)
+library(LEA)
+
+# 设置工作目录
+setwd("D:/QFIELS/200sample/SV/GEA/LFMM/GF/lfmm")
+cat("当前工作目录：", getwd(), "\n\n")
+
+##############################################################################
+# 第一步：从.raw文件提取SV标识符（修正方法）
+##############################################################################
+
+cat(paste(rep("=", 70), collapse = ""), "\n")
+cat("第一步：从.raw文件提取SV标识符（修正方法）\n")
+cat(paste(rep("=", 70), collapse = ""), "\n")
+
+cat("正在使用修正方法提取SV标识符...\n")
+
+# 方法：直接读取第一行并处理SV名称
+tryCatch({
+  # 读取.raw文件的第一行（表头行）
+  first_line <- readLines("200_samples_sv.plink.recodeA.raw", n = 1)
+  
+  # 分割表头（空格分隔）
+  header_parts <- strsplit(first_line, "\\s+")[[1]]
+  cat("表头总列数：", length(header_parts), "\n")
+  
+  # 显示表头结构
+  cat("\n表头结构（前15列）：\n")
+  for (i in 1:min(15, length(header_parts))) {
+    cat(sprintf("  %3d. %s\n", i, header_parts[i]))
+  }
+  
+  # 提取SV标识符（从第7列开始）
+  sv_full_names <- header_parts[7:length(header_parts)]
+  cat("\nSV原始名称数量：", length(sv_full_names), "\n")
+  
+  # 去除末尾的等位基因后缀
+  sv_ids <- sub("_[^_]+$", "", sv_full_names)
+  
+  cat("处理后的SV标识符数量：", length(sv_ids), "\n\n")
+  
+  # 显示前后对比
+  cat("SV标识符转换示例（前10个）：\n")
+  cat("原始名称 -> 处理后标识符\n")
+  cat(paste(rep("-", 40), collapse = ""), "\n")
+  
+  for (i in 1:min(10, length(sv_ids))) {
+    cat(sprintf("%-20s -> %-20s\n", 
+                substr(sv_full_names[i], 1, 20), 
+                substr(sv_ids[i], 1, 20)))
+  }
+  
+  # 检查重复
+  dup_counts <- sum(duplicated(sv_ids))
+  if (dup_counts > 0) {
+    cat("\n⚠️ 警告：发现", dup_counts, "个重复的SV标识符\n")
+    dup_ids <- sv_ids[duplicated(sv_ids)]
+    cat("重复的标识符（前5个）：\n")
+    for (i in 1:min(5, length(dup_ids))) {
+      cat("  ", dup_ids[i], "\n")
+    }
+    
+    # 使用make.unique处理重复
+    sv_ids <- make.unique(sv_ids, sep = "_dup")
+    cat("已使用make.unique修复重复标识符\n")
+    
+    # 记录重复处理情况
+    dup_positions <- which(duplicated(sub("_[^_]+$", "", sv_full_names)))
+    if (length(dup_positions) > 0) {
+      cat("\n重复SV的详细信息：\n")
+      for (pos in dup_positions) {
+        original_name <- sv_full_names[pos]
+        processed_name <- sv_ids[pos]
+        cat(sprintf("  位置 %d: %s -> %s\n", 
+                    pos, 
+                    substr(original_name, 1, 50), 
+                    processed_name))
+      }
+    }
+  } else {
+    cat("\n✓ 没有发现重复的SV标识符\n")
+  }
+  
+  # 检查空值或无效值
+  invalid_indices <- which(is.na(sv_ids) | sv_ids == "" | sv_ids == "NA")
+  if (length(invalid_indices) > 0) {
+    cat("\n⚠️ 警告：发现", length(invalid_indices), "个无效SV标识符\n")
+    
+    # 修复无效值
+    for (i in invalid_indices) {
+      sv_ids[i] <- paste0("SV_", i)
+    }
+    cat("已修复无效标识符\n")
+  }
+  
+  cat("\n最终SV标识符统计：\n")
+  cat("  总数：", length(sv_ids), "\n")
+  
+  # 验证提取是否成功
+  cat("\n验证提取结果：\n")
+  test_indices <- c(1, 10, 100, 1000, 10000)
+  test_indices <- test_indices[test_indices <= length(sv_ids)]
+  
+  for (i in seq_along(test_indices)) {
+    idx <- test_indices[i]
+    original <- sv_full_names[idx]
+    processed <- sv_ids[idx]
+    cat(sprintf("  %6d: %-25s -> %-25s\n", 
+                idx, 
+                substr(original, 1, 25), 
+                processed))
+  }
+  
+}, error = function(e) {
+  cat("SV标识符提取失败：", e$message, "\n")
+  cat("尝试备用方法...\n")
+  
+  # 备用方法
+  raw_sample <- fread("200_samples_sv.plink.recodeA.raw", 
+                      nrows = 5, 
+                      header = TRUE)
+  
+  all_cols <- colnames(raw_sample)
+  sv_cols <- all_cols[7:length(all_cols)]
+  sv_ids <- sub("_[^_]+$", "", sv_cols)
+  sv_ids <- make.unique(sv_ids, sep = "_dup")  # 仍然使用make.unique
+  
+  cat("使用备用方法提取到", length(sv_ids), "个SV标识符\n")
+})
+
+cat("\nSV标识符提取完成！\n")
+cat("SV数量：", length(sv_ids), "\n")
+
+##############################################################################
+# 第二步：读取环境因子数据
+##############################################################################
+
+cat("\n", paste(rep("=", 70), collapse = ""), "\n")
+cat("第二步：读取环境因子数据\n")
+cat(paste(rep("=", 70), collapse = ""), "\n")
+
+cat("正在读取环境因子数据...\n")
+X <- read.csv("Climate_current_200samples.csv", header = TRUE, row.names = 1)
+
+# 提取BIO1-BIO19
+X_env <- X[, 3:21]
+cat("环境数据维度：", dim(X_env), "\n")
+cat("环境因子名称：", paste(colnames(X_env), collapse = ", "), "\n")
+
+# 标准化环境数据
+cat("\n标准化环境数据...\n")
+X_env_scaled <- as.data.frame(scale(X_env))
+cat("标准化完成\n")
+
+##############################################################################
+# 第三步：读取基因型数据（.lfmm格式）
+##############################################################################
+
+cat("\n", paste(rep("=", 70), collapse = ""), "\n")
+cat("第三步：读取基因型数据\n")
+cat(paste(rep("=", 70), collapse = ""), "\n")
+
+cat("正在读取基因型数据（.lfmm格式）...\n")
+Y <- fread("200_samples_sv.plink.recodeA.lfmm", header = FALSE)
+Y_matrix <- as.matrix(Y)
+cat("基因型数据维度：", dim(Y_matrix), "\n")
+
+##############################################################################
+# 第四步：数据一致性检查
+##############################################################################
+
+cat("\n", paste(rep("=", 70), collapse = ""), "\n")
+cat("第四步：数据一致性检查\n")
+cat(paste(rep("=", 70), collapse = ""), "\n")
+
+# 检查SV数量是否匹配
+if (ncol(Y_matrix) != length(sv_ids)) {
+  cat("⚠️ 警告：SV标识符数量（", length(sv_ids), 
+      "）与基因型数据SV数量（", ncol(Y_matrix), "）不匹配\n")
+  
+  min_count <- min(length(sv_ids), ncol(Y_matrix))
+  sv_ids <- sv_ids[1:min_count]
+  Y_matrix <- Y_matrix[, 1:min_count]
+  
+  cat("已调整为", min_count, "个SV\n")
+} else {
+  cat("✓ SV数量匹配：", length(sv_ids), "个SV\n")
+}
+
+# 检查样本数是否匹配
+if (nrow(X_env_scaled) != nrow(Y_matrix)) {
+  cat("\n❌ 错误：样本数不匹配！\n")
+  cat("  环境数据样本数：", nrow(X_env_scaled), "\n")
+  cat("  基因型数据样本数：", nrow(Y_matrix), "\n")
+  stop("请检查数据文件，确保样本顺序一致")
+} else {
+  cat("✓ 样本数匹配：", nrow(X_env_scaled), "个样本\n")
+}
+
+cat("\n数据维度：\n")
+cat("  X（环境）：", dim(X_env_scaled), "\n")
+cat("  Y（基因型）：", dim(Y_matrix), "\n")
+
+##############################################################################
+# 后续步骤继续您的原代码...
+# （这里从第五步开始，保持您原有的代码结构不变）
+##############################################################################
+
+# 保存SV标识符，方便后续使用
+saveRDS(sv_ids, file = "sv_ids_processed.rds")
+cat("\nSV标识符已保存为：sv_ids_processed.rds\n")
+
+# 继续执行您原来的LFMM分析代码
+# 从第五步：设置分析参数 开始继续...
+
+cat("\n", paste(rep("=", 70), collapse = ""), "\n")
+cat("SV标识符提取完成，准备进行LFMM分析\n")
+cat(paste(rep("=", 70), collapse = ""), "\n")
+
+# 注意：后续的LFMM分析代码保持不变
+# 只需要确保在设置行列名时使用这个处理后的sv_ids
+
+cat("正在读取基因型数据（.lfmm格式）...\n")
+Y <- fread("200_samples_sv.plink.recodeA.lfmm", header = FALSE)
+Y_matrix <- as.matrix(Y)
+cat("基因型数据维度：", dim(Y_matrix), "\n")
+
+##############################################################################
+# 第四步：数据一致性检查
+##############################################################################
+
+cat("\n", paste(rep("=", 70), collapse = ""), "\n")
+cat("第四步：数据一致性检查\n")
+cat(paste(rep("=", 70), collapse = ""), "\n")
+
+# 检查SV数量是否匹配
+if (ncol(Y_matrix) != length(sv_ids)) {
+  cat("⚠️ 警告：SV标识符数量（", length(sv_ids), 
+      "）与基因型数据SV数量（", ncol(Y_matrix), "）不匹配\n")
+  
+  min_count <- min(length(sv_ids), ncol(Y_matrix))
+  sv_ids <- sv_ids[1:min_count]
+  Y_matrix <- Y_matrix[, 1:min_count]
+  
+  cat("已调整为", min_count, "个SV\n")
+} else {
+  cat("✓ SV数量匹配：", length(sv_ids), "个SV\n")
+}
+
+# 检查样本数是否匹配
+if (nrow(X_env_scaled) != nrow(Y_matrix)) {
+  cat("\n❌ 错误：样本数不匹配！\n")
+  cat("  环境数据样本数：", nrow(X_env_scaled), "\n")
+  cat("  基因型数据样本数：", nrow(Y_matrix), "\n")
+  stop("请检查数据文件，确保样本顺序一致")
+} else {
+  cat("✓ 样本数匹配：", nrow(X_env_scaled), "个样本\n")
+}
+
+cat("\n数据维度：\n")
+cat("  X（环境）：", dim(X_env_scaled), "\n")
+cat("  Y（基因型）：", dim(Y_matrix), "\n")
+
+##############################################################################
+# 第五步：设置分析参数
+##############################################################################
+
+cat("\n", paste(rep("=", 70), collapse = ""), "\n")
+cat("第五步：设置分析参数\n")
+cat(paste(rep("=", 70), collapse = ""), "\n")
+
+# 设置K值（潜在因子数量）
+# 注意：您需要根据群体结构分析确定最佳K值
+K <- 6  # 这里设为6，您可以根据实际情况调整
+
+cat("K值（潜在因子数量）：", K, "\n")
+cat("提示：K值的选择对结果很重要，建议根据群体结构分析确定\n")
+
+##############################################################################
+# 第六步：LFMM模型拟合
+##############################################################################
+
+cat("\n", paste(rep("=", 70), collapse = ""), "\n")
+cat("第六步：LFMM模型拟合\n")
+cat(paste(rep("=", 70), collapse = ""), "\n")
+
+cat("开始LFMM模型拟合...\n")
+cat("分析参数：\n")
+cat("  样本数：", nrow(X_env_scaled), "\n")
+cat("  SV数量：", ncol(Y_matrix), "\n")
+cat("  环境因子数：", ncol(X_env_scaled), "\n")
+cat("  K值：", K, "\n")
+
+start_time <- Sys.time()
+cat("开始时间：", format(start_time, "%H:%M:%S"), "\n")
+
+# 运行LFMM模型
+mod.lfmm <- lfmm::lfmm_ridge(Y = Y_matrix,
+                             X = as.matrix(X_env_scaled),
+                             K = K)
+
+end_time <- Sys.time()
+cat("LFMM模型拟合完成，耗时：", round(end_time - start_time, 2), "秒\n")
+
+##############################################################################
+# 第七步：计算p值（使用GIF校正）
+##############################################################################
+
+cat("\n", paste(rep("=", 70), collapse = ""), "\n")
+cat("第七步：计算p值（使用GIF校正）\n")
+cat(paste(rep("=", 70), collapse = ""), "\n")
+
+cat("正在计算p值...\n")
+start_time <- Sys.time()
+
+pv <- lfmm::lfmm_test(Y = Y_matrix, 
+                      X = as.matrix(X_env_scaled), 
+                      lfmm = mod.lfmm,
+                      calibrate = "gif")
+
+end_time <- Sys.time()
+cat("p值计算完成，耗时：", round(end_time - start_time, 2), "秒\n")
+
+# 保存结果
+saveRDS(pv, file = "pv_results_200samples_SV_bio1_19_corrected.rds")
+cat("结果已保存为：pv_results_200samples_SV_bio1_19_corrected.rds\n")
+
+# 加载结果
+pv <- readRDS("pv_results_200samples_SV_bio1_19_corrected.rds")
+
+cat("基因组膨胀因子（GIF）：", round(pv$gif, 3), "\n")
+
+##############################################################################
+# 第八步：提取和保存p值
+##############################################################################
+
+cat("\n", paste(rep("=", 70), collapse = ""), "\n")
+cat("第八步：提取和保存p值\n")
+cat(paste(rep("=", 70), collapse = ""), "\n")
+
+raw_pvalues <- pv$pvalue
+calibrated_pvalues <- pv$calibrated.pvalue
+
+cat("原始p值矩阵维度：", dim(raw_pvalues), "\n")
+cat("校正p值矩阵维度：", dim(calibrated_pvalues), "\n")
+
+# 设置行列名 - 关键步骤：使用处理后的sv_ids
+rownames(raw_pvalues) <- sv_ids
+rownames(calibrated_pvalues) <- sv_ids
+colnames(raw_pvalues) <- colnames(X_env_scaled)
+colnames(calibrated_pvalues) <- colnames(X_env_scaled)
+
+# 保存原始p值
+write.csv(raw_pvalues, file = "SV_raw_pvalues_bio1_19_corrected.csv")
+cat("原始p值已保存为：SV_raw_pvalues_bio1_19_corrected.csv\n")
+
+# 保存校正p值
+write.csv(calibrated_pvalues, file = "SV_calibrated_pvalues_bio1_19_corrected.csv")
+cat("校正p值已保存为：SV_calibrated_pvalues_bio1_19_corrected.csv\n")
+
+##############################################################################
+# 第九步：FDR校正（计算q值）
+##############################################################################
+
+cat("\n", paste(rep("=", 70), collapse = ""), "\n")
+cat("第九步：FDR校正（计算q值）\n")
+cat(paste(rep("=", 70), collapse = ""), "\n")
+
+num_env_factors <- ncol(calibrated_pvalues)
+qvalues_list <- list()
+
+cat("开始对", num_env_factors, "个环境因子进行FDR校正...\n")
+
+# 创建安全的qvalue计算函数
+safe_qvalue <- function(pvals) {
+  tryCatch({
+    # 处理NA值
+    pvals_clean <- pvals
+    pvals_clean[is.na(pvals_clean)] <- 1
+    
+    # 检查是否所有值都为1
+    if (all(pvals_clean == 1)) {
+      return(rep(1, length(pvals_clean)))
+    }
+    
+    # 检查是否有足够的变异
+    if (length(unique(pvals_clean)) < 10) {
+      cat("   注意：p值变异较小\n")
+    }
+    
+    # 计算q值
+    qobj <- qvalue(p = pvals_clean)
+    return(qobj$qvalues)
+  }, error = function(e) {
+    cat("   q值计算错误：", e$message, "\n")
+    cat("   返回保守值（全部为1）\n")
+    return(rep(1, length(pvals)))
+  })
+}
+
+for (i in 1:num_env_factors) {
+  env_name <- colnames(calibrated_pvalues)[i]
+  cat("  处理环境因子", i, "/", num_env_factors, "：", env_name, "\n")
+  
+  pvals <- calibrated_pvalues[, i]
+  
+  # 使用安全的q值计算
+  qvals <- safe_qvalue(pvals)
+  
+  # 存储结果
+  qvalues_list[[i]] <- data.frame(SVid = sv_ids, 
+                                  pvalues = pvals, 
+                                  qvalues = qvals)
+  
+  # 保存每个环境因子的q值
+  write.csv(qvalues_list[[i]], 
+            file = paste0("qvalues_", env_name, "_corrected.csv"), 
+            row.names = FALSE)
+}
+
+# 合并所有q值
+all_qvalues_matrix <- do.call(cbind, lapply(qvalues_list, function(x) x$qvalues))
+rownames(all_qvalues_matrix) <- sv_ids
+colnames(all_qvalues_matrix) <- colnames(calibrated_pvalues)
+
+write.csv(all_qvalues_matrix, file = "all_qvalues_SV_bio1_19_corrected.csv")
+cat("\n所有q值已保存为：all_qvalues_SV_bio1_19_corrected.csv\n")
+
+##############################################################################
+# 第十步：筛选显著性SV（FDR < 0.05）
+##############################################################################
+
+cat("\n", paste(rep("=", 70), collapse = ""), "\n")
+cat("第十步：筛选显著性SV（FDR < 0.05）\n")
+cat(paste(rep("=", 70), collapse = ""), "\n")
+
+env_factor_names <- colnames(calibrated_pvalues)
+threshold_list <- list()
+significant_counts <- data.frame(Environment_Factor = env_factor_names, 
+                                 Significant_SV_Count = integer(num_env_factors),
+                                 stringsAsFactors = FALSE)
+
+cat("开始筛选显著性SV（FDR < 0.05）...\n\n")
+
+for (i in 1:num_env_factors) {
+  env_name <- env_factor_names[i]
+  cat("  筛选环境因子：", env_name, "\n")
+  
+  # 从qvalues_list获取q值
+  qvals <- qvalues_list[[i]]$qvalues
+  
+  # 找到FDR阈值为0.05对应的p值阈值
+  if (any(qvals <= 0.05, na.rm = TRUE)) {
+    valid_indices <- which(qvals <= 0.05)
+    threshold_value_05 <- max(calibrated_pvalues[valid_indices, i], na.rm = TRUE)
+    corresponding_qvalue_05 <- 0.05
+  } else {
+    threshold_value_05 <- NA
+    corresponding_qvalue_05 <- NA
+  }
+  
+  # 找到FDR阈值为0.01对应的p值阈值
+  if (any(qvals <= 0.01, na.rm = TRUE)) {
+    valid_indices <- which(qvals <= 0.01)
+    threshold_value_01 <- max(calibrated_pvalues[valid_indices, i], na.rm = TRUE)
+    corresponding_qvalue_01 <- 0.01
+  } else {
+    threshold_value_01 <- NA
+    corresponding_qvalue_01 <- NA
+  }
+  
+  # 保存阈值信息
+  threshold_list[[i]] <- data.frame(
+    Environment_Factor = env_name, 
+    Threshold_05 = threshold_value_05, 
+    FDR_qvalue_05 = corresponding_qvalue_05,
+    Threshold_01 = threshold_value_01,
+    FDR_qvalue_01 = corresponding_qvalue_01
+  )
+  
+  # 筛选FDR < 0.05的显著性SV
+  significant_indices <- which(qvals < 0.05)
+  
+  if (length(significant_indices) > 0) {
+    significant_sv_ids <- sv_ids[significant_indices]
+    significant_pvals <- calibrated_pvalues[significant_indices, i]
+    significant_qvals <- qvals[significant_indices]
+    
+    # 保存显著性结果
+    significant_results <- data.frame(
+      SVid = significant_sv_ids, 
+      pvalues = significant_pvals, 
+      qvalues = significant_qvals
+    )
+    
+    write.csv(significant_results, 
+              file = paste0("significant_SVs_", env_name, "_FDR0.05_corrected.csv"), 
+              row.names = FALSE)
+    
+    # 单独保存显著性SV标识符
+    write.csv(data.frame(SVid = significant_sv_ids), 
+              file = paste0("significant_SV_ids_", env_name, "_FDR0.05_corrected.csv"), 
+              row.names = FALSE)
+    
+    significant_counts[i, "Significant_SV_Count"] <- length(significant_sv_ids)
+    cat("    找到", length(significant_sv_ids), "个显著性SV\n")
+  } else {
+    significant_counts[i, "Significant_SV_Count"] <- 0
+    cat("    未找到显著性SV\n")
+  }
+}
+
+# 保存阈值信息
+threshold_df <- do.call(rbind, threshold_list)
+write.csv(threshold_df, file = "FDR_thresholds_SV_bio1_19_corrected.csv", row.names = FALSE)
+cat("\nFDR阈值已保存为：FDR_thresholds_SV_bio1_19_corrected.csv\n")
+
+# 保存显著性计数
+write.csv(significant_counts, file = "significant_SV_counts_bio1_19_corrected.csv", row.names = FALSE)
+cat("显著性SV计数已保存为：significant_SV_counts_bio1_19_corrected.csv\n")
+
+##############################################################################
+# 第十一步：统计所有显著性SV（并集）
+##############################################################################
+
+cat("\n", paste(rep("=", 70), collapse = ""), "\n")
+cat("第十一步：统计所有显著性SV（并集）\n")
+cat(paste(rep("=", 70), collapse = ""), "\n")
+
+all_significant_sv_ids <- unique(unlist(lapply(1:num_env_factors, function(i) {
+  qvals <- qvalues_list[[i]]$qvalues
+  significant_indices <- which(qvals < 0.05)
+  
+  if (length(significant_indices) > 0) {
+    return(sv_ids[significant_indices])
+  }
+  return(NULL)
+})))
+
+if (length(all_significant_sv_ids) > 0) {
+  all_significant_sv_df <- data.frame(SVid = all_significant_sv_ids)
+  significant_sv_count <- nrow(all_significant_sv_df)
+  
+  write.csv(all_significant_sv_df, 
+            file = "all_significant_SV_ids_union_bio1_19_corrected.csv", 
+            row.names = FALSE)
+  
+  cat("所有环境因子下显著性SV的数量（并集）：", significant_sv_count, "\n")
+  cat("占SV总数的比例：", round(significant_sv_count/length(sv_ids)*100, 2), "%\n")
+  
+  cat("\n前10个显著性SV标识符：\n")
+  for (j in 1:min(10, length(all_significant_sv_ids))) {
+    cat("  ", j, ". ", all_significant_sv_ids[j], "\n", sep = "")
+  }
+} else {
+  cat("未找到任何环境因子的显著性SV\n")
+}
+
+##############################################################################
+# 第十二步：分析总结报告
+##############################################################################
+
+cat("\n", paste(rep("=", 70), collapse = ""), "\n")
+cat("第十二步：分析总结报告\n")
+cat(paste(rep("=", 70), collapse = ""), "\n")
+
+cat("🎉 LFMM分析完成！（使用.raw文件提取的SV标识符）\n\n")
+
+cat("📊 数据统计：\n")
+cat("  样本数量：", nrow(X_env_scaled), "\n")
+cat("  SV数量：", length(sv_ids), "\n")
+cat("  环境因子：", num_env_factors, "个（BIO1-BIO19）\n")
+cat("  K值：", K, "\n")
+cat("  GIF值：", round(pv$gif, 3), "\n\n")
+
+cat("📈 结果统计：\n")
+if (exists("significant_sv_count")) {
+  cat("  显著性SV总数（FDR < 0.05）：", significant_sv_count, "\n")
+  cat("  显著性SV比例：", round(significant_sv_count/length(sv_ids)*100, 2), "%\n")
+} else {
+  cat("  未找到显著性SV\n")
+}
+
+cat("\n📋 各环境因子显著性SV数量：\n")
+total_significant <- 0
+for (i in 1:num_env_factors) {
+  env_name <- env_factor_names[i]
+  count <- significant_counts[i, "Significant_SV_Count"]
+  total_significant <- total_significant + count
+  cat(sprintf("  %-10s: %6d 个显著性SV\n", env_name, count))
+}
+
+cat(sprintf("\n  合计：%d 个显著性关联\n", total_significant))
+
+cat("\n💾 生成的文件（文件名包含'_corrected'）：\n")
+files <- list.files(pattern = "_corrected\\.(csv|rds)$")
+if (length(files) > 0) {
+  file_count <- 0
+  for (file in files) {
+    if (file.exists(file)) {
+      file_size <- file.size(file)
+      cat(sprintf("  %-50s %8.1f KB\n", file, file_size/1024))
+      file_count <- file_count + 1
+    }
+  }
+  cat("\n  共生成", file_count, "个文件\n")
+} else {
+  cat("  暂无文件\n")
+}
+
+cat("\n", paste(rep("=", 70), collapse = ""), "\n")
+cat("分析完成时间：", date(), "\n")
+cat(paste(rep("=", 70), collapse = ""), "\n")
+
+# 保存工作空间
+save.image("LFMM_analysis_corrected.RData")
+cat("\n工作空间已保存为：LFMM_analysis_corrected.RData\n")
+cat("您可以使用 load('LFMM_analysis_corrected.RData') 重新加载所有数据\n")
+
+cat("\n✨ 分析流程全部完成！请查看工作目录中的结果文件。\n")
+
+# 最后，特别记录重复SV的处理情况
+dup_info_file <- "duplicate_SV_processing_info.txt"
+writeLines(c(
+  "重复SV处理信息：",
+  paste("分析时间：", Sys.time()),
+  paste("重复SV位置：", length(which(grepl("_dup", sv_ids)))),
+  paste("原始重复SV标识符：", ">10464698>10464724"),
+  paste("处理后的标识符："),
+  paste("  ", sv_ids[grepl(">10464698>10464724", sv_ids)])
+), dup_info_file)
+
+cat("\n重复SV处理信息已保存到：", dup_info_file, "\n")
+
+
+
+
+
+
+结果
+ cat(sprintf("%-20s -> %-20s\n", 
++                 substr(sv_full_names[i], 1, 20), 
++                 substr(sv_ids[i], 1, 20)))
++   }
++   
++   # 检查重复
++   dup_counts <- sum(duplicated(sv_ids))
++   if (dup_counts > 0) {
++     cat("\n⚠️ 警告：发现", dup_counts, "个重复的SV标识符\n")
++     dup_ids <- sv_ids[duplicated(sv_ids)]
++     cat("重复的标识符（前5个）：\n")
++     for (i in 1:min(5, length(dup_ids))) {
++       cat("  ", dup_ids[i], "\n")
++     }
++     
++     # 使用make.unique处理重复
++     sv_ids <- make.unique(sv_ids, sep = "_dup")
++     cat("已使用make.unique修复重复标识符\n")
++     
++     # 记录重复处理情况
++     dup_positions <- which(duplicated(sub("_[^_]+$", "", sv_full_names)))
++     if (length(dup_positions) > 0) {
++       cat("\n重复SV的详细信息：\n")
++       for (pos in dup_positions) {
++         original_name <- sv_full_names[pos]
++         processed_name <- sv_ids[pos]
++         cat(sprintf("  位置 %d: %s -> %s\n", 
++                     pos, 
++                     substr(original_name, 1, 50), 
++                     processed_name))
++       }
++     }
++   } else {
++     cat("\n✓ 没有发现重复的SV标识符\n")
++   }
++   
++   # 检查空值或无效值
++   invalid_indices <- which(is.na(sv_ids) | sv_ids == "" | sv_ids == "NA")
++   if (length(invalid_indices) > 0) {
++     cat("\n⚠️ 警告：发现", length(invalid_indices), "个无效SV标识符\n")
++     
++     # 修复无效值
++     for (i in invalid_indices) {
++       sv_ids[i] <- paste0("SV_", i)
++     }
++     cat("已修复无效标识符\n")
++   }
++   
++   cat("\n最终SV标识符统计：\n")
++   cat("  总数：", length(sv_ids), "\n")
++   
++   # 验证提取是否成功
++   cat("\n验证提取结果：\n")
++   test_indices <- c(1, 10, 100, 1000, 10000)
++   test_indices <- test_indices[test_indices <= length(sv_ids)]
++   
++   for (i in seq_along(test_indices)) {
++     idx <- test_indices[i]
++     original <- sv_full_names[idx]
++     processed <- sv_ids[idx]
++     cat(sprintf("  %6d: %-25s -> %-25s\n", 
++                 idx, 
++                 substr(original, 1, 25), 
++                 processed))
++   }
++   
++ }, error = function(e) {
++   cat("SV标识符提取失败：", e$message, "\n")
++   cat("尝试备用方法...\n")
++   
++   # 备用方法
++   raw_sample <- fread("200_samples_sv.plink.recodeA.raw", 
++                       nrows = 5, 
++                       header = TRUE)
++   
++   all_cols <- colnames(raw_sample)
++   sv_cols <- all_cols[7:length(all_cols)]
++   sv_ids <- sub("_[^_]+$", "", sv_cols)
++   sv_ids <- make.unique(sv_ids, sep = "_dup")  # 仍然使用make.unique
++   
++   cat("使用备用方法提取到", length(sv_ids), "个SV标识符\n")
++ })
+表头总列数： 55809 
+
+表头结构（前15列）：
+    1. FID
+    2. IID
+    3. PAT
+    4. MAT
+    5. SEX
+    6. PHENOTYPE
+    7. >189>192_T
+    8. >438>442_A
+    9. >492>495_C
+   10. >550>554_C
+   11. >912>915_GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGA
+   12. >1246>1250_A
+   13. >1653>1656_ATATATATATATATATATATATATATATATATATATATATATATATATATAT
+   14. >2155>2165_G
+   15. >2347>2352_G
+
+SV原始名称数量： 55803 
+处理后的SV标识符数量： 55803 
+
+SV标识符转换示例（前10个）：
+原始名称 -> 处理后标识符
+---------------------------------------- 
+>189>192_T           -> >189>192            
+>438>442_A           -> >438>442            
+>492>495_C           -> >492>495            
+>550>554_C           -> >550>554            
+>912>915_GGGGGGGGGGG -> >912>915            
+>1246>1250_A         -> >1246>1250          
+>1653>1656_ATATATATA -> >1653>1656          
+>2155>2165_G         -> >2155>2165          
+>2347>2352_G         -> >2347>2352          
+>2415>2420_A         -> >2415>2420          
+
+⚠️ 警告：发现 1 个重复的SV标识符
+重复的标识符（前5个）：
+   >10464698>10464724 
+已使用make.unique修复重复标识符
+
+重复SV的详细信息：
+  位置 24214: >10464698>10464724_TGTTGACCTCAAAAAGTGTATCTATGAGCTG -> >10464698>10464724_dup1
+
+最终SV标识符统计：
+  总数： 55803 
+
+验证提取结果：
+       1: >189>192_T                -> >189>192                 
+      10: >2415>2420_A              -> >2415>2420               
+     100: >31926>31972_TTAAATGCTATT -> >31926>31972             
+    1000: >312604>312609_CCAAAATTTT -> >312604>312609           
+   10000: >4306914>4306919_G        -> >4306914>4306919         
+> cat("\nSV标识符提取完成！\n")
+
+SV标识符提取完成！
+>   # 检查空值或无效值
+>   invalid_indices <- which(is.na(sv_ids) | sv_ids == "" | sv_ids == "NA")
+>   if (length(invalid_indices) > 0) {
++     cat("\n⚠️ 警告：发现", length(invalid_indices), "个无效SV标识符\n")
++     
++     # 修复无效值
++     for (i in invalid_indices) {
++       sv_ids[i] <- paste0("SV_", i)
++     }
++     cat("已修复无效标识符\n")
++   }
+>   cat("\n最终SV标识符统计：\n")
+
+最终SV标识符统计：
+>   cat("  总数：", length(sv_ids), "\n")
+  总数： 55803 
+>   # 验证提取是否成功
+>   cat("\n验证提取结果：\n")
+
+验证提取结果：
+>   test_indices <- c(1, 10, 100, 1000, 10000)
+>   test_indices <- test_indices[test_indices <= length(sv_ids)]
+>   for (i in seq_along(test_indices)) {
++     idx <- test_indices[i]
++     original <- sv_full_names[idx]
++     processed <- sv_ids[idx]
++     cat(sprintf("  %6d: %-25s -> %-25s\n", 
++                 idx, 
++                 substr(original, 1, 25), 
++                 processed))
++   }
+       1: >189>192_T                -> >189>192                 
+      10: >2415>2420_A              -> >2415>2420               
+     100: >31926>31972_TTAAATGCTATT -> >31926>31972             
+    1000: >312604>312609_CCAAAATTTT -> >312604>312609           
+   10000: >4306914>4306919_G        -> >4306914>4306919         
+> # 方法：直接读取第一行并处理SV名称
+> tryCatch({
++   # 读取.raw文件的第一行（表头行）
++   first_line <- readLines("200_samples_sv.plink.recodeA.raw", n = 1)
++   
++   # 分割表头（空格分隔）
++   header_parts <- strsplit(first_line, "\\s+")[[1]]
++   cat("表头总列数：", length(header_parts), "\n")
++   
++   # 显示表头结构
++   cat("\n表头结构（前15列）：\n")
++   for (i in 1:min(15, length(header_parts))) {
++     cat(sprintf("  %3d. %s\n", i, header_parts[i]))
++   }
++   
++   # 提取SV标识符（从第7列开始）
++   sv_full_names <- header_parts[7:length(header_parts)]
++   cat("\nSV原始名称数量：", length(sv_full_names), "\n")
++   
++   # 去除末尾的等位基因后缀
++   sv_ids <- sub("_[^_]+$", "", sv_full_names)
++   
++   cat("处理后的SV标识符数量：", length(sv_ids), "\n\n")
++   
++   # 显示前后对比
++   cat("SV标识符转换示例（前10个）：\n")
++   cat("原始名称 -> 处理后标识符\n")
++   cat(paste(rep("-", 40), collapse = ""), "\n")
++   
++   for (i in 1:min(10, length(sv_ids))) {
++     cat(sprintf("%-20s -> %-20s\n", 
++                 substr(sv_full_names[i], 1, 20), 
++                 substr(sv_ids[i], 1, 20)))
++   }
++   
++   # 检查重复
++   dup_counts <- sum(duplicated(sv_ids))
++   if (dup_counts > 0) {
++     cat("\n⚠️ 警告：发现", dup_counts, "个重复的SV标识符\n")
++     dup_ids <- sv_ids[duplicated(sv_ids)]
++     cat("重复的标识符（前5个）：\n")
++     for (i in 1:min(5, length(dup_ids))) {
++       cat("  ", dup_ids[i], "\n")
++     }
++     
++     # 使用make.unique处理重复
++     sv_ids <- make.unique(sv_ids, sep = "_dup")
++     cat("已使用make.unique修复重复标识符\n")
++     
++     # 记录重复处理情况
++     dup_positions <- which(duplicated(sub("_[^_]+$", "", sv_full_names)))
++     if (length(dup_positions) > 0) {
++       cat("\n重复SV的详细信息：\n")
++       for (pos in dup_positions) {
++         original_name <- sv_full_names[pos]
++         processed_name <- sv_ids[pos]
++         cat(sprintf("  位置 %d: %s -> %s\n", 
++                     pos, 
++                     substr(original_name, 1, 50), 
++                     processed_name))
++       }
++     }
++   } else {
++     cat("\n✓ 没有发现重复的SV标识符\n")
++   }
++   
++   # 检查空值或无效值
++   invalid_indices <- which(is.na(sv_ids) | sv_ids == "" | sv_ids == "NA")
++   if (length(invalid_indices) > 0) {
++     cat("\n⚠️ 警告：发现", length(invalid_indices), "个无效SV标识符\n")
++     
++     # 修复无效值
++     for (i in invalid_indices) {
++       sv_ids[i] <- paste0("SV_", i)
++     }
++     cat("已修复无效标识符\n")
++   }
++   
++   cat("\n最终SV标识符统计：\n")
++   cat("  总数：", length(sv_ids), "\n")
++   
++   # 验证提取是否成功
++   cat("\n验证提取结果：\n")
++   test_indices <- c(1, 10, 100, 1000, 10000)
++   test_indices <- test_indices[test_indices <= length(sv_ids)]
++   
++   for (i in seq_along(test_indices)) {
++     idx <- test_indices[i]
++     original <- sv_full_names[idx]
++     processed <- sv_ids[idx]
++     cat(sprintf("  %6d: %-25s -> %-25s\n", 
++                 idx, 
++                 substr(original, 1, 25), 
++                 processed))
++   }
++   
++ }, error = function(e) {
++   cat("SV标识符提取失败：", e$message, "\n")
++   cat("尝试备用方法...\n")
++   
++   # 备用方法
++   raw_sample <- fread("200_samples_sv.plink.recodeA.raw", 
++                       nrows = 5, 
++                       header = TRUE)
++   
++   all_cols <- colnames(raw_sample)
++   sv_cols <- all_cols[7:length(all_cols)]
++   sv_ids <- sub("_[^_]+$", "", sv_cols)
++   sv_ids <- make.unique(sv_ids, sep = "_dup")  # 仍然使用make.unique
++   
++   cat("使用备用方法提取到", length(sv_ids), "个SV标识符\n")
++ })
+表头总列数： 55809 
+
+表头结构（前15列）：
+    1. FID
+    2. IID
+    3. PAT
+    4. MAT
+    5. SEX
+    6. PHENOTYPE
+    7. >189>192_T
+    8. >438>442_A
+    9. >492>495_C
+   10. >550>554_C
+   11. >912>915_GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGA
+   12. >1246>1250_A
+   13. >1653>1656_ATATATATATATATATATATATATATATATATATATATATATATATATATAT
+   14. >2155>2165_G
+   15. >2347>2352_G
+
+SV原始名称数量： 55803 
+处理后的SV标识符数量： 55803 
+
+SV标识符转换示例（前10个）：
+原始名称 -> 处理后标识符
+---------------------------------------- 
+>189>192_T           -> >189>192            
+>438>442_A           -> >438>442            
+>492>495_C           -> >492>495            
+>550>554_C           -> >550>554            
+>912>915_GGGGGGGGGGG -> >912>915            
+>1246>1250_A         -> >1246>1250          
+>1653>1656_ATATATATA -> >1653>1656          
+>2155>2165_G         -> >2155>2165          
+>2347>2352_G         -> >2347>2352          
+>2415>2420_A         -> >2415>2420          
+
+⚠️ 警告：发现 1 个重复的SV标识符
+重复的标识符（前5个）：
+   >10464698>10464724 
+已使用make.unique修复重复标识符
+
+重复SV的详细信息：
+  位置 24214: >10464698>10464724_TGTTGACCTCAAAAAGTGTATCTATGAGCTG -> >10464698>10464724_dup1
+
+最终SV标识符统计：
+  总数： 55803 
+
+验证提取结果：
+       1: >189>192_T                -> >189>192                 
+      10: >2415>2420_A              -> >2415>2420               
+     100: >31926>31972_TTAAATGCTATT -> >31926>31972             
+    1000: >312604>312609_CCAAAATTTT -> >312604>312609           
+   10000: >4306914>4306919_G        -> >4306914>4306919         
+> cat("\nSV标识符提取完成！\n")
+
+SV标识符提取完成！
+> cat("SV数量：", length(sv_ids), "\n")
+SV数量： 55803 
+> cat("\n", paste(rep("=", 70), collapse = ""), "\n")
+
+ ====================================================================== 
+> cat("第二步：读取环境因子数据\n")
+第二步：读取环境因子数据
+> cat(paste(rep("=", 70), collapse = ""), "\n")
+====================================================================== 
+> cat("正在读取环境因子数据...\n")
+正在读取环境因子数据...
+> X <- read.csv("Climate_current_200samples.csv", header = TRUE, row.names = 1)
+> # 提取BIO1-BIO19
+> X_env <- X[, 3:21]
+> cat("环境数据维度：", dim(X_env), "\n")
+环境数据维度： 200 19 
+> cat("环境因子名称：", paste(colnames(X_env), collapse = ", "), "\n")
+环境因子名称： BIO1, BIO2, BIO3, BIO4, BIO5, BIO6, BIO7, BIO8, BIO9, BIO10, BIO11, BIO12, BIO13, BIO14, BIO15, BIO16, BIO17, BIO18, BIO19 
+> # 标准化环境数据
+> cat("\n标准化环境数据...\n")
+
+标准化环境数据...
+> X_env_scaled <- as.data.frame(scale(X_env))
+> cat("标准化完成\n")
+标准化完成
+> cat("\n", paste(rep("=", 70), collapse = ""), "\n")
+
+ ====================================================================== 
+> cat("第三步：读取基因型数据\n")
+第三步：读取基因型数据
+> cat(paste(rep("=", 70), collapse = ""), "\n")
+====================================================================== 
+> cat("正在读取基因型数据（.lfmm格式）...\n")
+正在读取基因型数据（.lfmm格式）...
+> Y <- fread("200_samples_sv.plink.recodeA.lfmm", header = FALSE)
+> Y_matrix <- as.matrix(Y)
+> cat("基因型数据维度：", dim(Y_matrix), "\n")
+基因型数据维度： 200 55803 
+> cat("\n", paste(rep("=", 70), collapse = ""), "\n")
+
+ ====================================================================== 
+> cat("第四步：数据一致性检查\n")
+第四步：数据一致性检查
+> cat(paste(rep("=", 70), collapse = ""), "\n")
+====================================================================== 
+> # 检查SV数量是否匹配
+> if (ncol(Y_matrix) != length(sv_ids)) {
++   cat("⚠️ 警告：SV标识符数量（", length(sv_ids), 
++       "）与基因型数据SV数量（", ncol(Y_matrix), "）不匹配\n")
++   
++   min_count <- min(length(sv_ids), ncol(Y_matrix))
++   sv_ids <- sv_ids[1:min_count]
++   Y_matrix <- Y_matrix[, 1:min_count]
++   
++   cat("已调整为", min_count, "个SV\n")
++ } else {
++   cat("✓ SV数量匹配：", length(sv_ids), "个SV\n")
++ }
+✓ SV数量匹配： 55803 个SV
+> # 检查样本数是否匹配
+> if (nrow(X_env_scaled) != nrow(Y_matrix)) {
++   cat("\n❌ 错误：样本数不匹配！\n")
++   cat("  环境数据样本数：", nrow(X_env_scaled), "\n")
++   cat("  基因型数据样本数：", nrow(Y_matrix), "\n")
++   stop("请检查数据文件，确保样本顺序一致")
++ } else {
++   cat("✓ 样本数匹配：", nrow(X_env_scaled), "个样本\n")
++ }
+✓ 样本数匹配： 200 个样本
+> cat("\n数据维度：\n")
+
+数据维度：
+> cat("  X（环境）：", dim(X_env_scaled), "\n")
+  X（环境）： 200 19 
+> cat("  Y（基因型）：", dim(Y_matrix), "\n")
+  Y（基因型）： 200 55803 
+> # 保存SV标识符，方便后续使用
+> saveRDS(sv_ids, file = "sv_ids_processed.rds")
+> cat("\nSV标识符已保存为：sv_ids_processed.rds\n")
+
+SV标识符已保存为：sv_ids_processed.rds
+> cat("\n", paste(rep("=", 70), collapse = ""), "\n")
+
+ ====================================================================== 
+> cat("SV标识符提取完成，准备进行LFMM分析\n")
+SV标识符提取完成，准备进行LFMM分析
+> cat(paste(rep("=", 70), collapse = ""), "\n")
+====================================================================== 
+> cat("\n", paste(rep("=", 70), collapse = ""), "\n")
+
+ ====================================================================== 
+> cat("第四步：数据一致性检查\n")
+第四步：数据一致性检查
+> cat(paste(rep("=", 70), collapse = ""), "\n")
+====================================================================== 
+> # 检查SV数量是否匹配
+> if (ncol(Y_matrix) != length(sv_ids)) {
++   cat("⚠️ 警告：SV标识符数量（", length(sv_ids), 
++       "）与基因型数据SV数量（", ncol(Y_matrix), "）不匹配\n")
++   
++   min_count <- min(length(sv_ids), ncol(Y_matrix))
++   sv_ids <- sv_ids[1:min_count]
++   Y_matrix <- Y_matrix[, 1:min_count]
++   
++   cat("已调整为", min_count, "个SV\n")
++ } else {
++   cat("✓ SV数量匹配：", length(sv_ids), "个SV\n")
++ }
+✓ SV数量匹配： 55803 个SV
+> # 检查样本数是否匹配
+> if (nrow(X_env_scaled) != nrow(Y_matrix)) {
++   cat("\n❌ 错误：样本数不匹配！\n")
++   cat("  环境数据样本数：", nrow(X_env_scaled), "\n")
++   cat("  基因型数据样本数：", nrow(Y_matrix), "\n")
++   stop("请检查数据文件，确保样本顺序一致")
++ } else {
++   cat("✓ 样本数匹配：", nrow(X_env_scaled), "个样本\n")
++ }
+✓ 样本数匹配： 200 个样本
+> cat("\n数据维度：\n")
+
+数据维度：
+> cat("  X（环境）：", dim(X_env_scaled), "\n")
+  X（环境）： 200 19 
+> cat("  Y（基因型）：", dim(Y_matrix), "\n")
+  Y（基因型）： 200 55803 
+> cat("\n", paste(rep("=", 70), collapse = ""), "\n")
+
+ ====================================================================== 
+> cat("第五步：设置分析参数\n")
+第五步：设置分析参数
+> cat(paste(rep("=", 70), collapse = ""), "\n")
+====================================================================== 
+> # 设置K值（潜在因子数量）
+> # 注意：您需要根据群体结构分析确定最佳K值
+> K <- 6  # 这里设为6，您可以根据实际情况调整
+> cat("K值（潜在因子数量）：", K, "\n")
+K值（潜在因子数量）： 6 
+> cat("提示：K值的选择对结果很重要，建议根据群体结构分析确定\n")
+提示：K值的选择对结果很重要，建议根据群体结构分析确定
+> cat("\n", paste(rep("=", 70), collapse = ""), "\n")
+
+ ====================================================================== 
+> cat("第六步：LFMM模型拟合\n")
+第六步：LFMM模型拟合
+> cat(paste(rep("=", 70), collapse = ""), "\n")
+====================================================================== 
+> cat("开始LFMM模型拟合...\n")
+开始LFMM模型拟合...
+> cat("分析参数：\n")
+分析参数：
+> cat("  样本数：", nrow(X_env_scaled), "\n")
+  样本数： 200 
+> cat("  SV数量：", ncol(Y_matrix), "\n")
+  SV数量： 55803 
+> cat("  环境因子数：", ncol(X_env_scaled), "\n")
+  环境因子数： 19 
+> cat("  K值：", K, "\n")
+  K值： 6 
+> start_time <- Sys.time()
+> cat("开始时间：", format(start_time, "%H:%M:%S"), "\n")
+开始时间： 16:18:27 
+> # 运行LFMM模型
+> mod.lfmm <- lfmm::lfmm_ridge(Y = Y_matrix,
++                              X = as.matrix(X_env_scaled),
++                              K = K)
+> end_time <- Sys.time()
+> cat("LFMM模型拟合完成，耗时：", round(end_time - start_time, 2), "秒\n")
+LFMM模型拟合完成，耗时： 8.65 秒
+> cat("\n", paste(rep("=", 70), collapse = ""), "\n")
+
+ ====================================================================== 
+> cat("第七步：计算p值（使用GIF校正）\n")
+第七步：计算p值（使用GIF校正）
+> cat(paste(rep("=", 70), collapse = ""), "\n")
+====================================================================== 
+> cat("正在计算p值...\n")
+正在计算p值...
+> start_time <- Sys.time()
+> pv <- lfmm::lfmm_test(Y = Y_matrix, 
++                       X = as.matrix(X_env_scaled), 
++                       lfmm = mod.lfmm,
++                       calibrate = "gif")
+> end_time <- Sys.time()
+> cat("p值计算完成，耗时：", round(end_time - start_time, 2), "秒\n")
+p值计算完成，耗时： 13.27 秒
+> # 保存结果
+> saveRDS(pv, file = "pv_results_200samples_SV_bio1_19_corrected.rds")
+> cat("结果已保存为：pv_results_200samples_SV_bio1_19_corrected.rds\n")
+结果已保存为：pv_results_200samples_SV_bio1_19_corrected.rds
+> # 加载结果
+> pv <- readRDS("pv_results_200samples_SV_bio1_19_corrected.rds")
+> cat("基因组膨胀因子（GIF）：", round(pv$gif, 3), "\n")
+基因组膨胀因子（GIF）： 1.871 2.005 2.277 1.92 0 0 0 1.764 1.569 2 1.676 2.261 1.997 2.005 1.957 2.087 1.821 2.421 2.289 
+> cat("\n", paste(rep("=", 70), collapse = ""), "\n")
+
+ ====================================================================== 
+> cat("第八步：提取和保存p值\n")
+第八步：提取和保存p值
+> cat(paste(rep("=", 70), collapse = ""), "\n")
+====================================================================== 
+> raw_pvalues <- pv$pvalue
+> calibrated_pvalues <- pv$calibrated.pvalue
+> cat("原始p值矩阵维度：", dim(raw_pvalues), "\n")
+原始p值矩阵维度： 55803 19 
+> cat("校正p值矩阵维度：", dim(calibrated_pvalues), "\n")
+校正p值矩阵维度： 55803 19 
+> # 设置行列名 - 关键步骤：使用处理后的sv_ids
+> rownames(raw_pvalues) <- sv_ids
+> rownames(calibrated_pvalues) <- sv_ids
+> colnames(raw_pvalues) <- colnames(X_env_scaled)
+> colnames(calibrated_pvalues) <- colnames(X_env_scaled)
+> # 保存原始p值
+> write.csv(raw_pvalues, file = "SV_raw_pvalues_bio1_19_corrected.csv")
+> cat("原始p值已保存为：SV_raw_pvalues_bio1_19_corrected.csv\n")
+原始p值已保存为：SV_raw_pvalues_bio1_19_corrected.csv
+> # 保存校正p值
+> write.csv(calibrated_pvalues, file = "SV_calibrated_pvalues_bio1_19_corrected.csv")
+> cat("校正p值已保存为：SV_calibrated_pvalues_bio1_19_corrected.csv\n")
+校正p值已保存为：SV_calibrated_pvalues_bio1_19_corrected.csv
+> cat("\n", paste(rep("=", 70), collapse = ""), "\n")
+
+ ====================================================================== 
+> cat("第九步：FDR校正（计算q值）\n")
+第九步：FDR校正（计算q值）
+> cat(paste(rep("=", 70), collapse = ""), "\n")
+====================================================================== 
+> num_env_factors <- ncol(calibrated_pvalues)
+> qvalues_list <- list()
+> cat("开始对", num_env_factors, "个环境因子进行FDR校正...\n")
+开始对 19 个环境因子进行FDR校正...
+> # 创建安全的qvalue计算函数
+> safe_qvalue <- function(pvals) {
++   tryCatch({
++     # 处理NA值
++     pvals_clean <- pvals
++     pvals_clean[is.na(pvals_clean)] <- 1
++     
++     # 检查是否所有值都为1
++     if (all(pvals_clean == 1)) {
++       return(rep(1, length(pvals_clean)))
++     }
++     
++     # 检查是否有足够的变异
++     if (length(unique(pvals_clean)) < 10) {
++       cat("   注意：p值变异较小\n")
++     }
++     
++     # 计算q值
++     qobj <- qvalue(p = pvals_clean)
++     return(qobj$qvalues)
++   }, error = function(e) {
++     cat("   q值计算错误：", e$message, "\n")
++     cat("   返回保守值（全部为1）\n")
++     return(rep(1, length(pvals)))
++   })
++ }
+> for (i in 1:num_env_factors) {
++   env_name <- colnames(calibrated_pvalues)[i]
++   cat("  处理环境因子", i, "/", num_env_factors, "：", env_name, "\n")
++   
++   pvals <- calibrated_pvalues[, i]
++   
++   # 使用安全的q值计算
++   qvals <- safe_qvalue(pvals)
++   
++   # 存储结果
++   qvalues_list[[i]] <- data.frame(SVid = sv_ids, 
++                                   pvalues = pvals, 
++                                   qvalues = qvals)
++   
++   # 保存每个环境因子的q值
++   write.csv(qvalues_list[[i]], 
++             file = paste0("qvalues_", env_name, "_corrected.csv"), 
++             row.names = FALSE)
++ }
+  处理环境因子 1 / 19 ： BIO1 
+  处理环境因子 2 / 19 ： BIO2 
+  处理环境因子 3 / 19 ： BIO3 
+  处理环境因子 4 / 19 ： BIO4 
+  处理环境因子 5 / 19 ： BIO5 
+  处理环境因子 6 / 19 ： BIO6 
+  处理环境因子 7 / 19 ： BIO7 
+  处理环境因子 8 / 19 ： BIO8 
+  处理环境因子 9 / 19 ： BIO9 
+  处理环境因子 10 / 19 ： BIO10 
+  处理环境因子 11 / 19 ： BIO11 
+  处理环境因子 12 / 19 ： BIO12 
+  处理环境因子 13 / 19 ： BIO13 
+  处理环境因子 14 / 19 ： BIO14 
+  处理环境因子 15 / 19 ： BIO15 
+  处理环境因子 16 / 19 ： BIO16 
+  处理环境因子 17 / 19 ： BIO17 
+  处理环境因子 18 / 19 ： BIO18 
+  处理环境因子 19 / 19 ： BIO19 
+> # 合并所有q值
+> all_qvalues_matrix <- do.call(cbind, lapply(qvalues_list, function(x) x$qvalues))
+> rownames(all_qvalues_matrix) <- sv_ids
+> colnames(all_qvalues_matrix) <- colnames(calibrated_pvalues)
+> write.csv(all_qvalues_matrix, file = "all_qvalues_SV_bio1_19_corrected.csv")
+> cat("\n所有q值已保存为：all_qvalues_SV_bio1_19_corrected.csv\n")
+
+所有q值已保存为：all_qvalues_SV_bio1_19_corrected.csv
+> cat("\n", paste(rep("=", 70), collapse = ""), "\n")
+
+ ====================================================================== 
+> cat("第十步：筛选显著性SV（FDR < 0.05）\n")
+第十步：筛选显著性SV（FDR < 0.05）
+> cat(paste(rep("=", 70), collapse = ""), "\n")
+====================================================================== 
+> env_factor_names <- colnames(calibrated_pvalues)
+> threshold_list <- list()
+> significant_counts <- data.frame(Environment_Factor = env_factor_names, 
++                                  Significant_SV_Count = integer(num_env_factors),
++                                  stringsAsFactors = FALSE)
+> cat("开始筛选显著性SV（FDR < 0.05）...\n\n")
+开始筛选显著性SV（FDR < 0.05）...
+
+> for (i in 1:num_env_factors) {
++   env_name <- env_factor_names[i]
++   cat("  筛选环境因子：", env_name, "\n")
++   
++   # 从qvalues_list获取q值
++   qvals <- qvalues_list[[i]]$qvalues
++   
++   # 找到FDR阈值为0.05对应的p值阈值
++   if (any(qvals <= 0.05, na.rm = TRUE)) {
++     valid_indices <- which(qvals <= 0.05)
++     threshold_value_05 <- max(calibrated_pvalues[valid_indices, i], na.rm = TRUE)
++     corresponding_qvalue_05 <- 0.05
++   } else {
++     threshold_value_05 <- NA
++     corresponding_qvalue_05 <- NA
++   }
++   
++   # 找到FDR阈值为0.01对应的p值阈值
++   if (any(qvals <= 0.01, na.rm = TRUE)) {
++     valid_indices <- which(qvals <= 0.01)
++     threshold_value_01 <- max(calibrated_pvalues[valid_indices, i], na.rm = TRUE)
++     corresponding_qvalue_01 <- 0.01
++   } else {
++     threshold_value_01 <- NA
++     corresponding_qvalue_01 <- NA
++   }
++   
++   # 保存阈值信息
++   threshold_list[[i]] <- data.frame(
++     Environment_Factor = env_name, 
++     Threshold_05 = threshold_value_05, 
++     FDR_qvalue_05 = corresponding_qvalue_05,
++     Threshold_01 = threshold_value_01,
++     FDR_qvalue_01 = corresponding_qvalue_01
++   )
++   
++   # 筛选FDR < 0.05的显著性SV
++   significant_indices <- which(qvals < 0.05)
++   
++   if (length(significant_indices) > 0) {
++     significant_sv_ids <- sv_ids[significant_indices]
++     significant_pvals <- calibrated_pvalues[significant_indices, i]
++     significant_qvals <- qvals[significant_indices]
++     
++     # 保存显著性结果
++     significant_results <- data.frame(
++       SVid = significant_sv_ids, 
++       pvalues = significant_pvals, 
++       qvalues = significant_qvals
++     )
++     
++     write.csv(significant_results, 
++               file = paste0("significant_SVs_", env_name, "_FDR0.05_corrected.csv"), 
++               row.names = FALSE)
++     
++     # 单独保存显著性SV标识符
++     write.csv(data.frame(SVid = significant_sv_ids), 
++               file = paste0("significant_SV_ids_", env_name, "_FDR0.05_corrected.csv"), 
++               row.names = FALSE)
++     
++     significant_counts[i, "Significant_SV_Count"] <- length(significant_sv_ids)
++     cat("    找到", length(significant_sv_ids), "个显著性SV\n")
++   } else {
++     significant_counts[i, "Significant_SV_Count"] <- 0
++     cat("    未找到显著性SV\n")
++   }
++ }
+  筛选环境因子： BIO1 
+    找到 57 个显著性SV
+  筛选环境因子： BIO2 
+    找到 109 个显著性SV
+  筛选环境因子： BIO3 
+    找到 282 个显著性SV
+  筛选环境因子： BIO4 
+    找到 6 个显著性SV
+  筛选环境因子： BIO5 
+    找到 43 个显著性SV
+  筛选环境因子： BIO6 
+    找到 46 个显著性SV
+  筛选环境因子： BIO7 
+    找到 39 个显著性SV
+  筛选环境因子： BIO8 
+    找到 15 个显著性SV
+  筛选环境因子： BIO9 
+    找到 176 个显著性SV
+  筛选环境因子： BIO10 
+    找到 51 个显著性SV
+  筛选环境因子： BIO11 
+    找到 5 个显著性SV
+  筛选环境因子： BIO12 
+    找到 97 个显著性SV
+  筛选环境因子： BIO13 
+    找到 100 个显著性SV
+  筛选环境因子： BIO14 
+    找到 43 个显著性SV
+  筛选环境因子： BIO15 
+    找到 160 个显著性SV
+  筛选环境因子： BIO16 
+    找到 206 个显著性SV
+  筛选环境因子： BIO17 
+    未找到显著性SV
+  筛选环境因子： BIO18 
+    找到 182 个显著性SV
+  筛选环境因子： BIO19 
+    找到 261 个显著性SV
+> # 保存阈值信息
+> threshold_df <- do.call(rbind, threshold_list)
+> write.csv(threshold_df, file = "FDR_thresholds_SV_bio1_19_corrected.csv", row.names = FALSE)
+> cat("\nFDR阈值已保存为：FDR_thresholds_SV_bio1_19_corrected.csv\n")
+
+FDR阈值已保存为：FDR_thresholds_SV_bio1_19_corrected.csv
+> # 保存显著性计数
+> write.csv(significant_counts, file = "significant_SV_counts_bio1_19_corrected.csv", row.names = FALSE)
+> cat("显著性SV计数已保存为：significant_SV_counts_bio1_19_corrected.csv\n")
+显著性SV计数已保存为：significant_SV_counts_bio1_19_corrected.csv
+> cat("\n", paste(rep("=", 70), collapse = ""), "\n")
+
+ ====================================================================== 
+> cat("第十一步：统计所有显著性SV（并集）\n")
+第十一步：统计所有显著性SV（并集）
+> cat(paste(rep("=", 70), collapse = ""), "\n")
+====================================================================== 
+> all_significant_sv_ids <- unique(unlist(lapply(1:num_env_factors, function(i) {
++   qvals <- qvalues_list[[i]]$qvalues
++   significant_indices <- which(qvals < 0.05)
++   
++   if (length(significant_indices) > 0) {
++     return(sv_ids[significant_indices])
++   }
++   return(NULL)
++ })))
+> if (length(all_significant_sv_ids) > 0) {
++   all_significant_sv_df <- data.frame(SVid = all_significant_sv_ids)
++   significant_sv_count <- nrow(all_significant_sv_df)
++   
++   write.csv(all_significant_sv_df, 
++             file = "all_significant_SV_ids_union_bio1_19_corrected.csv", 
++             row.names = FALSE)
++   
++   cat("所有环境因子下显著性SV的数量（并集）：", significant_sv_count, "\n")
++   cat("占SV总数的比例：", round(significant_sv_count/length(sv_ids)*100, 2), "%\n")
++   
++   cat("\n前10个显著性SV标识符：\n")
++   for (j in 1:min(10, length(all_significant_sv_ids))) {
++     cat("  ", j, ". ", all_significant_sv_ids[j], "\n", sep = "")
++   }
++ } else {
++   cat("未找到任何环境因子的显著性SV\n")
++ }
+所有环境因子下显著性SV的数量（并集）： 1078 
+占SV总数的比例： 1.93 %
+
+前10个显著性SV标识符：
+  1. >2701106>2701109
+  2. >2810513>2810517
+  3. >2968548>2968627
+  4. >2968906>2968910
+  5. >2971770>2971779
+  6. >3022521>3022538
+  7. >3069995>3070001
+  8. >3081063>3081066
+  9. >4317640>4317644
+  10. >4414977>4414986
+> cat("\n", paste(rep("=", 70), collapse = ""), "\n")
+
+ ====================================================================== 
+> cat("第十二步：分析总结报告\n")
+第十二步：分析总结报告
+> cat(paste(rep("=", 70), collapse = ""), "\n")
+====================================================================== 
+> cat("🎉 LFMM分析完成！（使用.raw文件提取的SV标识符）\n\n")
+🎉 LFMM分析完成！（使用.raw文件提取的SV标识符）
+
+> cat("📊 数据统计：\n")
+📊 数据统计：
+> cat("  样本数量：", nrow(X_env_scaled), "\n")
+  样本数量： 200 
+> cat("  SV数量：", length(sv_ids), "\n")
+  SV数量： 55803 
+> cat("  环境因子：", num_env_factors, "个（BIO1-BIO19）\n")
+  环境因子： 19 个（BIO1-BIO19）
+> cat("  K值：", K, "\n")
+  K值： 6 
+> cat("  GIF值：", round(pv$gif, 3), "\n\n")
+  GIF值： 1.871 2.005 2.277 1.92 0 0 0 1.764 1.569 2 1.676 2.261 1.997 2.005 1.957 2.087 1.821 2.421 2.289 
+
+> cat("📈 结果统计：\n")
+📈 结果统计：
+> if (exists("significant_sv_count")) {
++   cat("  显著性SV总数（FDR < 0.05）：", significant_sv_count, "\n")
++   cat("  显著性SV比例：", round(significant_sv_count/length(sv_ids)*100, 2), "%\n")
++ } else {
++   cat("  未找到显著性SV\n")
++ }
+  显著性SV总数（FDR < 0.05）： 1078 
+  显著性SV比例： 1.93 %
+> cat("\n📋 各环境因子显著性SV数量：\n")
+
+📋 各环境因子显著性SV数量：
+> total_significant <- 0
+> for (i in 1:num_env_factors) {
++   env_name <- env_factor_names[i]
++   count <- significant_counts[i, "Significant_SV_Count"]
++   total_significant <- total_significant + count
++   cat(sprintf("  %-10s: %6d 个显著性SV\n", env_name, count))
++ }
+  BIO1      :     57 个显著性SV
+  BIO2      :    109 个显著性SV
+  BIO3      :    282 个显著性SV
+  BIO4      :      6 个显著性SV
+  BIO5      :     43 个显著性SV
+  BIO6      :     46 个显著性SV
+  BIO7      :     39 个显著性SV
+  BIO8      :     15 个显著性SV
+  BIO9      :    176 个显著性SV
+  BIO10     :     51 个显著性SV
+  BIO11     :      5 个显著性SV
+  BIO12     :     97 个显著性SV
+  BIO13     :    100 个显著性SV
+  BIO14     :     43 个显著性SV
+  BIO15     :    160 个显著性SV
+  BIO16     :    206 个显著性SV
+  BIO17     :      0 个显著性SV
+  BIO18     :    182 个显著性SV
+  BIO19     :    261 个显著性SV
+> cat(sprintf("\n  合计：%d 个显著性关联\n", total_significant))
+
+  合计：1878 个显著性关联
+> cat("\n💾 生成的文件（文件名包含'_corrected'）：\n")
+
+💾 生成的文件（文件名包含'_corrected'）：
+> files <- list.files(pattern = "_corrected\\.(csv|rds)$")
+> if (length(files) > 0) {
++   file_count <- 0
++   for (file in files) {
++     if (file.exists(file)) {
++       file_size <- file.size(file)
++       cat(sprintf("  %-50s %8.1f KB\n", file, file_size/1024))
++       file_count <- file_count + 1
++     }
++   }
++   cat("\n  共生成", file_count, "个文件\n")
++ } else {
++   cat("  暂无文件\n")
++ }
+  all_qvalues_SV_bio1_19_corrected.csv                19253.1 KB
+  all_significant_SV_ids_union_bio1_19_corrected.csv     21.9 KB
+  FDR_thresholds_SV_bio1_19_corrected.csv                 1.2 KB
+  pv_results_200samples_SV_bio1_19_corrected.rds      50806.8 KB
+  qvalues_BIO1_corrected.csv                           3108.2 KB
+  qvalues_BIO10_corrected.csv                          3106.3 KB
+  qvalues_BIO11_corrected.csv                          3107.0 KB
+  qvalues_BIO12_corrected.csv                          3108.4 KB
+  qvalues_BIO13_corrected.csv                          3106.6 KB
+  qvalues_BIO14_corrected.csv                          3104.1 KB
+  qvalues_BIO15_corrected.csv                          3108.6 KB
+  qvalues_BIO16_corrected.csv                          3107.3 KB
+  qvalues_BIO17_corrected.csv                          3105.8 KB
+  qvalues_BIO18_corrected.csv                          3084.3 KB
+  qvalues_BIO19_corrected.csv                          2682.6 KB
+  qvalues_BIO2_corrected.csv                           3108.7 KB
+  qvalues_BIO3_corrected.csv                           3106.6 KB
+  qvalues_BIO4_corrected.csv                           3107.8 KB
+  qvalues_BIO5_corrected.csv                           3108.0 KB
+  qvalues_BIO6_corrected.csv                           3107.5 KB
+  qvalues_BIO7_corrected.csv                           3099.5 KB
+  qvalues_BIO8_corrected.csv                           3106.8 KB
+  qvalues_BIO9_corrected.csv                           3101.1 KB
+  significant_SV_counts_bio1_19_corrected.csv             0.3 KB
+  significant_SV_ids_BIO1_FDR0.05_corrected.csv           1.2 KB
+  significant_SV_ids_BIO10_FDR0.05_corrected.csv          1.1 KB
+  significant_SV_ids_BIO11_FDR0.05_corrected.csv          0.1 KB
+  significant_SV_ids_BIO12_FDR0.05_corrected.csv          2.0 KB
+  significant_SV_ids_BIO13_FDR0.05_corrected.csv          2.0 KB
+  significant_SV_ids_BIO14_FDR0.05_corrected.csv          0.9 KB
+  significant_SV_ids_BIO15_FDR0.05_corrected.csv          3.3 KB
+  significant_SV_ids_BIO16_FDR0.05_corrected.csv          4.2 KB
+  significant_SV_ids_BIO18_FDR0.05_corrected.csv          3.7 KB
+  significant_SV_ids_BIO19_FDR0.05_corrected.csv          5.2 KB
+  significant_SV_ids_BIO2_FDR0.05_corrected.csv           2.3 KB
+  significant_SV_ids_BIO3_FDR0.05_corrected.csv           5.7 KB
+  significant_SV_ids_BIO4_FDR0.05_corrected.csv           0.1 KB
+  significant_SV_ids_BIO5_FDR0.05_corrected.csv           0.9 KB
+  significant_SV_ids_BIO6_FDR0.05_corrected.csv           1.0 KB
+  significant_SV_ids_BIO7_FDR0.05_corrected.csv           0.8 KB
+  significant_SV_ids_BIO8_FDR0.05_corrected.csv           0.3 KB
+  significant_SV_ids_BIO9_FDR0.05_corrected.csv           3.6 KB
+  significant_SVs_BIO1_FDR0.05_corrected.csv              3.5 KB
+  significant_SVs_BIO10_FDR0.05_corrected.csv             3.1 KB
+  significant_SVs_BIO11_FDR0.05_corrected.csv             0.3 KB
+  significant_SVs_BIO12_FDR0.05_corrected.csv             5.8 KB
+  significant_SVs_BIO13_FDR0.05_corrected.csv             6.0 KB
+  significant_SVs_BIO14_FDR0.05_corrected.csv             2.6 KB
+  significant_SVs_BIO15_FDR0.05_corrected.csv             9.6 KB
+  significant_SVs_BIO16_FDR0.05_corrected.csv            12.4 KB
+  significant_SVs_BIO18_FDR0.05_corrected.csv            10.9 KB
+  significant_SVs_BIO19_FDR0.05_corrected.csv            15.5 KB
+  significant_SVs_BIO2_FDR0.05_corrected.csv              6.7 KB
+  significant_SVs_BIO3_FDR0.05_corrected.csv             17.0 KB
+  significant_SVs_BIO4_FDR0.05_corrected.csv              0.4 KB
+  significant_SVs_BIO5_FDR0.05_corrected.csv              2.7 KB
+  significant_SVs_BIO6_FDR0.05_corrected.csv              2.8 KB
+  significant_SVs_BIO7_FDR0.05_corrected.csv              2.4 KB
+  significant_SVs_BIO8_FDR0.05_corrected.csv              0.9 KB
+  significant_SVs_BIO9_FDR0.05_corrected.csv             10.6 KB
+  SV_calibrated_pvalues_bio1_19_corrected.csv         19810.1 KB
+  SV_raw_pvalues_bio1_19_corrected.csv                19981.6 KB
+
+  共生成 62 个文件
+> cat("\n", paste(rep("=", 70), collapse = ""), "\n")
+
+ ====================================================================== 
+> cat("分析完成时间：", date(), "\n")
+分析完成时间： Tue Dec  2 16:21:53 2025 
+> cat(paste(rep("=", 70), collapse = ""), "\n")
+====================================================================== 
+> # 保存工作空间
+> save.image("LFMM_analysis_corrected.RData")
+> cat("\n工作空间已保存为：LFMM_analysis_corrected.RData\n")
+
+工作空间已保存为：LFMM_analysis_corrected.RData
+> cat("您可以使用 load('LFMM_analysis_corrected.RData') 重新加载所有数据\n")
+您可以使用 load('LFMM_analysis_corrected.RData') 重新加载所有数据
+> cat("\n✨ 分析流程全部完成！请查看工作目录中的结果文件。\n")
+
+✨ 分析流程全部完成！请查看工作目录中的结果文件。
+> # 最后，特别记录重复SV的处理情况
+> dup_info_file <- "duplicate_SV_processing_info.txt"
+> writeLines(c(
++   "重复SV处理信息：",
++   paste("分析时间：", Sys.time()),
++   paste("重复SV位置：", length(which(grepl("_dup", sv_ids)))),
++   paste("原始重复SV标识符：", ">10464698>10464724"),
++   paste("处理后的标识符："),
++   paste("  ", sv_ids[grepl(">10464698>10464724", sv_ids)])
++ ), dup_info_file)
+> cat("\n重复SV处理信息已保存到：", dup_info_file, "\n")
+
+重复SV处理信息已保存到： duplicate_SV_processing_info.txt 
+> 
+> 
