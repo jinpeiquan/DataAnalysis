@@ -21,3 +21,25 @@ nohup vcftools --vcf 200_samples_bia_indel.recode.vcf \
 
 echo "MAF和缺失率过滤进程 PID: $!"
 原始位点: 86,799个;保留位点: 55,803个;过滤掉: 30,996个位点 (约35.7%)
+
+s删除4个群体HJLL、HYX、ZJP、EJ的25个个体
+vcftools --vcf 200_samples_maf_miss.recode.vcf --remove remove_indv.txt --recode --recode-INFO-all --out 175_samples_maf_miss.filtered
+结果
+vcftools --vcf 200_samples_maf_miss.recode.vcf --remove remove_indv.txt --recode --recode-INFO-all --out 175_samples_f_miss.filtered
+
+VCFtools - 0.1.16
+(C) Adam Auton and Anthony Marcketta 2009
+
+Parameters as interpreted:
+        --vcf 200_samples_maf_miss.recode.vcf
+        --remove remove_indv.txt
+        --recode-INFO-all
+        --out 175_samples_maf_miss.filtered
+        --recode
+
+Warning: Expected at least 2 parts in FORMAT entry: ID=DR,Number=2,Type=Integer,Description="# supporting reference,variant reads in that order">
+Excluding individuals in 'exclude' list
+After filtering, kept 175 out of 200 Individuals
+Outputting VCF file...
+After filtering, kept 55803 out of a possible 55803 Sites
+Run Time = 177.00 seconds
