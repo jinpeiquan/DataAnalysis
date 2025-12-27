@@ -1,1 +1,2 @@
+nohup sh -c 'seq 2 10 | parallel -j 4 "/home/guop/anaconda2/bin/admixture --cv=10 --seed=5678 independent_snps.bed {} > admix.{}.log 2>&1"' > admixture.run.log 2>&1 &
 
