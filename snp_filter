@@ -42,6 +42,26 @@ plink --vcf 200_samples_er_snp_filtered_vcftools.recode.vcf \
       --vcf-half-call m
 从10546196位点中保留978,728
 
+#5只过半相位为缺失，不过LD
+# 直接处理并生成新的VCF
+plink --vcf 200_samples_er_snp_filtered_vcftools.recode.vcf \
+      --vcf-half-call m \
+      --recode vcf \
+      --out 200_samples_no_halfcall \
+      --allow-extra-chr \
+      --set-missing-var-ids @:#
+
+# 压缩
+bgzip 200_samples_no_halfcall.vcf
+tabix -p vcf 200_samples_no_halfcall.vcf.gz
+
+echo "=== 处理完成 ==="
+echo "原始文件: 200_samples_er_snp_filtered_vcftools.recode.vcf"
+echo "新文件: 200_samples_no_halfcall.vcf.gz"
+echo ""
+echo "文件大小对比:"
+ls -lh 200_samples_er_snp_filtered_vcftools.recode.vcf \
+       200_samples_no_halfcall.vcf.gz 2>/dev/null || echo "新文件已压缩"
 
 
 
