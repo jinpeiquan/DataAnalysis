@@ -65,6 +65,30 @@ ls -lh 200_samples_er_snp_filtered_vcftools.recode.vcf \
 
 
 
+先过半相位再过缺失
+# 步骤1：用PLINK处理half-calls
+plink --vcf 200_samples_er_snp.recode.vcf \
+      --vcf-half-call m \
+      --recode vcf \
+      --out 200_samples_no_halfcall \
+      --allow-extra-chr
+
+# 步骤2：用VCFtools进行质量过滤
+vcftools --vcf 200_samples_no_halfcall.vcf \
+         --minGQ 10 \
+         --minQ 30 \
+         --min-meanDP 6 \
+         --max-missing 0.8 \
+         --maf 0.05 \
+         --recode \
+         --recode-INFO-all \
+         --out 200_samples_er_snp_filtered_clean
+
+
+
+
+
+
 
 结果
 plink --vcf 200_samples_er_snp_filtered_vcftools.recode.vcf \
