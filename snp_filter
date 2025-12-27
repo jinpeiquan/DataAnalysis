@@ -1,0 +1,120 @@
+#方法：使用--remove-indv（直接指定个体名）
+# 去除ZJS1和ZJS10 两个个体+过滤二等位
+
+ #不带树
+ nohup vcftools --gzvcf All.SNP.vcf.gz \
+         --recode-INFO-all \
+         --max-alleles 2 \
+         --min-alleles 2 \
+         --out 200_samples_bia_snp \
+         --recode \
+         --remove-indv ZJS_1 \
+         --remove-indv ZJS_10 &
+ 从90704251个位点中保留81358912
+ #2.过滤maf和miss和深度、质量值
+#使用vcftools进行MAF和缺失率过滤、最小基因型质量值为10、最小位点质量值为30、最小平均测序深度为6
+vcftools --vcf 200_samples_bia_snp.recode.vcf \
+         --minGQ 10 \
+         --minQ 30 \
+         --min-meanDP 6 \
+         --max-missing 0.8 \
+         --maf 0.05 \
+         --recode \
+         --recode-INFO-all \
+         --out 200_samples_er_snp_filtered_vcftools
+从81358912中保留10546196位点
+#3.进行LD过滤
+ plink --vcf 200_samples_er_snp_filtered_vcftools.recode.vcf \
+      --indep-pairwise 50 5 0.2 \
+      --out LD_filtered \
+      --allow-extra-chr \
+      --set-missing-var-ids @:# \
+      --vcf-half-call m
+
+
+#4. 提取独立SNP到新的PLINK文件
+plink --vcf 200_samples_er_snp_filtered_vcftools.recode.vcf \
+      --extract LD_filtered.prune.in \
+      --make-bed \
+      --out independent_snps \
+      --allow-extra-chr \
+      --set-missing-var-ids @:# \
+      --vcf-half-call m
+从10546196位点中保留978,728
+
+
+
+
+
+结果
+plink --vcf 200_samples_er_snp_filtered_vcftools.recode.vcf \
+>       --indep-pairwise 50 5 0.2 \
+>       --out LD_filtered \
+>       --allow-extra-chr \
+>       --set-missing-var-ids @:# \
+>       --vcf-half-call m
+PLINK v1.90b6.21 64-bit (19 Oct 2020)          www.cog-genomics.org/plink/1.9/
+(C) 2005-2020 Shaun Purcell, Christopher Chang   GNU General Public License v3
+Logging to LD_filtered.log.
+Options in effect:
+  --allow-extra-chr
+  --indep-pairwise 50 5 0.2
+  --out LD_filtered
+  --set-missing-var-ids @:#
+  --vcf 200_samples_er_snp_filtered_vcftools.recode.vcf
+  --vcf-half-call m
+
+838227 MB RAM detected; reserving 419113 MB for main workspace.
+Allocated 314334 MB successfully, after larger attempt(s) failed.
+--vcf: LD_filtered-temporary.bed + LD_filtered-temporary.bim +
+LD_filtered-temporary.fam written.
+10546196 variants loaded from .bim file.
+200 people (0 males, 0 females, 200 ambiguous) loaded from .fam.
+Ambiguous sex IDs written to LD_filtered.nosex .
+Using 1 thread (no multithreaded calculations invoked).
+Before main variant filters, 200 founders and 0 nonfounders present.
+Calculating allele frequencies... done.
+Total genotyping rate is 0.940897.
+10546196 variants and 200 people pass filters and QC.
+Note: No phenotypes present.
+Pruned 708917 variants from chromosome 1, leaving 72734.
+Pruned 560270 variants from chromosome 2, leaving 56881.
+Pruned 391634 variants from chromosome 3, leaving 38305.
+Pruned 533631 variants from chromosome 4, leaving 53446.
+Pruned 476142 variants from chromosome 5, leaving 45885.
+Pruned 475868 variants from chromosome 6, leaving 49256.
+Pruned 312489 variants from chromosome 7, leaving 29707.
+Pruned 429508 variants from chromosome 8, leaving 44704.
+Pruned 381208 variants from chromosome 9, leaving 38215.
+Pruned 421160 variants from chromosome 10, leaving 41935.
+Pruned 418590 variants from chromosome 11, leaving 43254.
+Pruned 429347 variants from chromosome 12, leaving 45699.
+Pruned 427159 variants from chromosome 13, leaving 43774.
+Pruned 383433 variants from chromosome 14, leaving 40860.
+Pruned 400624 variants from chromosome 15, leaving 42700.
+Pruned 408831 variants from chromosome 16, leaving 42268.
+Pruned 394070 variants from chromosome 17, leaving 40951.
+Pruned 358034 variants from chromosome 18, leaving 38213.
+Pruned 344459 variants from chromosome 19, leaving 34932.
+Pruned 353250 variants from chromosome 20, leaving 36808.
+Pruned 321481 variants from chromosome 21, leaving 33098.
+Pruned 324829 variants from chromosome 22, leaving 33288.
+Pruned 312534 variants from chromosome 23, leaving 31815.
+Pruning complete.  9567468 of 10546196 variants removed.
+Marker lists written to LD_filtered.prune.in and LD_filtered.prune.out .
+
+
+结果总结
+1. 基本统计
+总SNP数：10,546,196个
+
+样本数：200个
+
+总基因型率：94.09%（质量很好）
+
+性别信息：全部为ambiguous（VCF文件通常不包含性别信息）
+
+2. LD过滤结果
+过滤掉的SNP：9,567,468个（90.72%）
+
+保留的SNP：978,728个（9.28%）
