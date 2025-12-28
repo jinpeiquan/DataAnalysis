@@ -65,7 +65,7 @@ ls -lh 200_samples_er_snp_filtered_vcftools.recode.vcf \
 
 
 
-先过半相位再过缺失
+先过半相位再过缺失（不用这个）
 # 步骤1：用PLINK处理half-calls
 plink --vcf 200_samples_er_snp.recode.vcf \
       --vcf-half-call m \
