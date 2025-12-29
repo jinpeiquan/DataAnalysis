@@ -43,3 +43,21 @@ After filtering, kept 175 out of 200 Individuals
 Outputting VCF file...
 After filtering, kept 55803 out of a possible 55803 Sites
 Run Time = 177.00 seconds
+
+
+# 175_samples_maf_miss.filtered.recode.vcf→175_samples_sorted.vcf.gz （把1/2转成1/1）转化成.lfmm文件
+ bcftools query -f '[%GT\n]' 175_samples_maf_miss.filtered.recode.vcf | \
+>   sort | uniq -c | sort -nr | head -20
+4736368 0/0
+1903326 1/1
+1646407 0/1
+1373239 1/0
+  80312 ./.
+  25873 1/2
+bcftools query -f '[%GT\n]' 175_samples_sorted.vcf.gz| \
+>   sort | uniq -c | sort -nr | head -20
+4736368 0/0
+1929199 1/1
+1646407 0/1
+1373239 1/0
+  80312 ./.
