@@ -77,17 +77,6 @@ plink --bfile independent_snps \
 
 
 #6转Beagle格式NGSadmix
-# 如果已经有 independent_snps.{bed,bim,fam}
-plink --bfile independent_snps \
-      --recode beagle \
-      --out independent_snps
-
-# 会生成：independent_snps.beagle
-# 压缩：
-gzip independent_snps.beagle
-
-
-
 
 
 
