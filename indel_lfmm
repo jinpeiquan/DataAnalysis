@@ -2,10 +2,83 @@
 plink --vcf 175_samples_sorted.vcf.gz \
       --recode --allow-extra-chr \
       --out 175_samples_indel.plink
+
+
+
+#结果
+ plink --vcf 175_samples_sorted.vcf.gz \
+>       --recode --allow-extra-chr \
+>       --out 175_samples_indel.plink
+PLINK v1.90b6.21 64-bit (19 Oct 2020)          www.cog-genomics.org/plink/1.9/
+(C) 2005-2020 Shaun Purcell, Christopher Chang   GNU General Public License v3
+Logging to 175_samples_indel.plink.log.
+Options in effect:
+  --allow-extra-chr
+  --out 175_samples_indel.plink
+  --recode
+  --vcf 175_samples_sorted.vcf.gz
+
+838227 MB RAM detected; reserving 419113 MB for main workspace.
+Allocated 235750 MB successfully, after larger attempt(s) failed.
+--vcf: 175_samples_indel.plink-temporary.bed +
+175_samples_indel.plink-temporary.bim + 175_samples_indel.plink-temporary.fam
+written.
+55803 variants loaded from .bim file.
+175 people (0 males, 0 females, 175 ambiguous) loaded from .fam.
+Ambiguous sex IDs written to 175_samples_indel.plink.nosex .
+Using 1 thread (no multithreaded calculations invoked).
+Before main variant filters, 175 founders and 0 nonfounders present.
+Calculating allele frequencies... done.
+Total genotyping rate is 0.991776.
+55803 variants and 175 people pass filters and QC.
+Note: No phenotypes present.
+--recode ped to 175_samples_indel.plink.ped + 175_samples_indel.plink.map ...
+done.
+
+
+
+
+
 #2生成数值型基因型文件
 plink --file 175_samples_indel.plink \
       --recodeA --allow-extra-chr \
       --out 175_samples_indel.plink.recodeA
+#结果
+ plink --file 175_samples_indel.plink \
+>       --recodeA --allow-extra-chr \
+>       --out 175_samples_indel.plink.recodeA
+PLINK v1.90b6.21 64-bit (19 Oct 2020)          www.cog-genomics.org/plink/1.9/
+(C) 2005-2020 Shaun Purcell, Christopher Chang   GNU General Public License v3
+Note: --recodeA flag deprecated.  Use "--recode A ...".
+Logging to 175_samples_indel.plink.recodeA.log.
+Options in effect:
+  --allow-extra-chr
+  --file 175_samples_indel.plink
+  --out 175_samples_indel.plink.recodeA
+  --recode A
+
+838227 MB RAM detected; reserving 419113 MB for main workspace.
+Allocated 314334 MB successfully, after larger attempt(s) failed.
+Possibly irregular .ped line.  Restarting scan, assuming multichar alleles.
+.ped scan complete (for binary autoconversion).
+Performing single-pass .bed write (55803 variants, 175 people).
+--file: 175_samples_indel.plink.recodeA-temporary.bed +
+175_samples_indel.plink.recodeA-temporary.bim +
+175_samples_indel.plink.recodeA-temporary.fam written.
+55803 variants loaded from .bim file.
+175 people (0 males, 0 females, 175 ambiguous) loaded from .fam.
+Ambiguous sex IDs written to 175_samples_indel.plink.recodeA.nosex .
+Using 1 thread (no multithreaded calculations invoked).
+Before main variant filters, 175 founders and 0 nonfounders present.
+Calculating allele frequencies... done.
+Total genotyping rate is 0.991776.
+55803 variants and 175 people pass filters and QC.
+Note: No phenotypes present.
+--recode A to 175_samples_indel.plink.recodeA.raw ... done.
+
+
+
+
 #第3步：格式整理为LFMM输入
 sed '1d; s/NA/9/g' 175_samples_indel.plink.recodeA.raw | \
 awk '{ $1=$2=$3=$4=$5=$6=""; print substr($0, index($0,$7)) }' > 175_samples_indel.plink.recodeA.lfmm
