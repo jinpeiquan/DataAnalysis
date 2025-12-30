@@ -1,1 +1,12 @@
-
+nohup bash -c '
+for K in {2..10}; do
+    echo "Running K=$K"
+    /home/guop/anaconda2/bin/python /home/guop/anaconda2/bin/structure.py -K $K \
+     --input=/public1/guop/jpq/workspace/guihuasnp/202_2sample/LDnew/independent_snps \
+     --output=/public1/guop/jpq/workspace/guihuasnp/202_2sample/LDnew/faststructure/200_samples_faststructure_$K \
+     --cv=5 --prior=simple --seed=1234 \
+     > /public1/guop/jpq/workspace/guihuasnp/202_2sample/LDnew/faststructure/faststructure_$K.log 2>&1 &
+done
+wait
+echo "All jobs completed"
+' > nohup.out 2>&1 &
