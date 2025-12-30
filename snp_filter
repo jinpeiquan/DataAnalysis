@@ -23,6 +23,81 @@ vcftools --vcf 200_samples_bia_snp.recode.vcf \
          --recode-INFO-all \
          --out 200_samples_er_snp_filtered_vcftools
 从81358912中保留10546196位点
+
+有半缺失基因型
+ bcftools query -f '[%GT\n]' 200_samples_er_snp_filtered_vcftools.recode.vcf | \
+>   sort | uniq -c | sort -nr | head -20
+1252532189 0/0
+424915331 0/1
+307130013 1/1
+124210857 ./.
+ 445352 ./0
+   5458 ./1
+
+
+# 这个专门用于处理部分缺失基因型，把半缺失转为缺失
+bcftools +setGT 200_samples_er_snp_filtered_vcftools.recode.vcf \
+  -- -t ./x -n . \
+  > 200_samples_no_partial_missing.vcf
+
+结果
+bcftools +setGT 200_samples_er_snp_filtered_vcftools.recode.vcf \
+>   -- -t ./x -n . \
+>   > 200_samples_no_partial_missing.vcf
+Filled 450810 alleles
+
+
+#检查一下基因型是否转化
+ bcftools query -f '[%GT\n]' 200_samples_no_partial_missing.vcf | \
+>   sort | uniq -c | sort -nr | head -10
+1252532189 0/0
+424915331 0/1
+307130013 1/1
+124661667 ./.
+
+# 3进行LD过滤（生成.prune.in文件）
+plink --vcf 200_samples_no_partial_missing.vcf \
+      --indep-pairwise 50 5 0.2 \
+      --out LD_filtered \
+      --allow-extra-chr \
+      --set-missing-var-ids @:#
+
+# 4提取独立SNP
+plink --vcf 200_samples_no_partial_missing.vcf \
+      --extract LD_filtered.prune.in \
+      --make-bed \
+      --out independent_snps \
+      --allow-extra-chr \
+      --set-missing-var-ids @:#
+
+# 5转换为结构格式（如果需要）
+plink --bfile independent_snps \
+      --recode structure \
+      --out independent_snps_str
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #3.进行LD过滤
  plink --vcf 200_samples_er_snp_filtered_vcftools.recode.vcf \
       --indep-pairwise 50 5 0.2 \
