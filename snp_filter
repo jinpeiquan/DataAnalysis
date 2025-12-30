@@ -89,6 +89,127 @@ plink --bfile independent_snps \
 
 
 
+结果
+plink --vcf 200_samples_no_partial_missing.vcf \
+>       --indep-pairwise 50 5 0.2 \
+>       --out LD_filtered \
+>       --allow-extra-chr \
+>       --set-missing-var-ids @:#
+PLINK v1.90b6.21 64-bit (19 Oct 2020)          www.cog-genomics.org/plink/1.9/
+(C) 2005-2020 Shaun Purcell, Christopher Chang   GNU General Public License v3
+Logging to LD_filtered.log.
+Options in effect:
+  --allow-extra-chr
+  --indep-pairwise 50 5 0.2
+  --out LD_filtered
+  --set-missing-var-ids @:#
+  --vcf 200_samples_no_partial_missing.vcf
+
+838227 MB RAM detected; reserving 419113 MB for main workspace.
+Allocated 132609 MB successfully, after larger attempt(s) failed.
+--vcf: LD_filtered-temporary.bed + LD_filtered-temporary.bim +
+LD_filtered-temporary.fam written.
+10546196 variants loaded from .bim file.
+200 people (0 males, 0 females, 200 ambiguous) loaded from .fam.
+Ambiguous sex IDs written to LD_filtered.nosex .
+Using 1 thread (no multithreaded calculations invoked).
+Before main variant filters, 200 founders and 0 nonfounders present.
+Calculating allele frequencies... done.
+Total genotyping rate is 0.940897.
+10546196 variants and 200 people pass filters and QC.
+Note: No phenotypes present.
+Pruned 708917 variants from chromosome 1, leaving 72734.
+Pruned 560270 variants from chromosome 2, leaving 56881.
+Pruned 391634 variants from chromosome 3, leaving 38305.
+Pruned 533631 variants from chromosome 4, leaving 53446.
+Pruned 476142 variants from chromosome 5, leaving 45885.
+Pruned 475868 variants from chromosome 6, leaving 49256.
+Pruned 312489 variants from chromosome 7, leaving 29707.
+Pruned 429508 variants from chromosome 8, leaving 44704.
+Pruned 381208 variants from chromosome 9, leaving 38215.
+Pruned 421160 variants from chromosome 10, leaving 41935.
+Pruned 418590 variants from chromosome 11, leaving 43254.
+Pruned 429347 variants from chromosome 12, leaving 45699.
+Pruned 427159 variants from chromosome 13, leaving 43774.
+Pruned 383433 variants from chromosome 14, leaving 40860.
+Pruned 400624 variants from chromosome 15, leaving 42700.
+Pruned 408831 variants from chromosome 16, leaving 42268.
+Pruned 394070 variants from chromosome 17, leaving 40951.
+Pruned 358034 variants from chromosome 18, leaving 38213.
+Pruned 344459 variants from chromosome 19, leaving 34932.
+Pruned 353250 variants from chromosome 20, leaving 36808.
+Pruned 321481 variants from chromosome 21, leaving 33098.
+Pruned 324829 variants from chromosome 22, leaving 33288.
+Pruned 312534 variants from chromosome 23, leaving 31815.
+Pruning complete.  9567468 of 10546196 variants removed.
+Marker lists written to LD_filtered.prune.in and LD_filtered.prune.out .
+(base) [guop@node01 LDnew]$
+
+
+
+
+
+ plink --vcf 200_samples_no_partial_missing.vcf \
+>       --extract LD_filtered.prune.in \
+>       --make-bed \
+>       --out independent_snps \
+>       --allow-extra-chr \
+>       --set-missing-var-ids @:#
+PLINK v1.90b6.21 64-bit (19 Oct 2020)          www.cog-genomics.org/plink/1.9/
+(C) 2005-2020 Shaun Purcell, Christopher Chang   GNU General Public License v3
+Logging to independent_snps.log.
+Options in effect:
+  --allow-extra-chr
+  --extract LD_filtered.prune.in
+  --make-bed
+  --out independent_snps
+  --set-missing-var-ids @:#
+  --vcf 200_samples_no_partial_missing.vcf
+
+838227 MB RAM detected; reserving 419113 MB for main workspace.
+--vcf: independent_snps-temporary.bed + independent_snps-temporary.bim +
+independent_snps-temporary.fam written.
+10546196 variants loaded from .bim file.
+200 people (0 males, 0 females, 200 ambiguous) loaded from .fam.
+Ambiguous sex IDs written to independent_snps.nosex .
+--extract: 978728 variants remaining.
+Using 1 thread (no multithreaded calculations invoked).
+Before main variant filters, 200 founders and 0 nonfounders present.
+Calculating allele frequencies... done.
+Total genotyping rate is 0.938675.
+978728 variants and 200 people pass filters and QC.
+Note: No phenotypes present.
+--make-bed to independent_snps.bed + independent_snps.bim +
+independent_snps.fam ... done.
+(base) [guop@node01 LDnew]$
+
+
+
+
+
+
+ plink --bfile independent_snps \
+>       --recode structure \
+>       --out independent_snps_str
+PLINK v1.90b6.21 64-bit (19 Oct 2020)          www.cog-genomics.org/plink/1.9/
+(C) 2005-2020 Shaun Purcell, Christopher Chang   GNU General Public License v3
+Logging to independent_snps_str.log.
+Options in effect:
+  --bfile independent_snps
+  --out independent_snps_str
+  --recode structure
+
+838227 MB RAM detected; reserving 419113 MB for main workspace.
+978728 variants loaded from .bim file.
+200 people (0 males, 0 females, 200 ambiguous) loaded from .fam.
+Ambiguous sex IDs written to independent_snps_str.nosex .
+Using 1 thread (no multithreaded calculations invoked).
+Before main variant filters, 200 founders and 0 nonfounders present.
+Calculating allele frequencies... done.
+Total genotyping rate is 0.938675.
+978728 variants and 200 people pass filters and QC.
+Note: No phenotypes present.
+--recode structure to independent_snps_str.recode.strct_in ... done.
 
 
 
