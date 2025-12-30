@@ -89,7 +89,7 @@ plink --bfile independent_snps \
 
 
 
-结果
+最新结果
 plink --vcf 200_samples_no_partial_missing.vcf \
 >       --indep-pairwise 50 5 0.2 \
 >       --out LD_filtered \
@@ -218,7 +218,7 @@ Note: No phenotypes present.
 
 
 
-
+#以下是老结果
 #3.进行LD过滤
  plink --vcf 200_samples_er_snp_filtered_vcftools.recode.vcf \
       --indep-pairwise 50 5 0.2 \
