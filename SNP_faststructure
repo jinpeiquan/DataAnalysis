@@ -10,3 +10,142 @@ done
 wait
 echo "All jobs completed"
 ' > nohup.out 2>&1 &
+
+
+
+
+
+
+
+
+#R画图代码
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(patchwork)
+# 设置工作路径
+setwd("D:/QFIELS/200sample/SNP/faststructure")
+# ------------------------------
+# 1. 输入文件路径
+# ------------------------------
+famfile <- "D:/QFIELS/200sample/SNP/faststructure/independent_snps.fam"
+qfiles <- list(
+  Q2 = "D:/QFIELS/200sample/SNP/faststructure/K2_cv5.2.meanQ",
+  Q3 = "D:/QFIELS/200sample/SNP/faststructure/K3_cv5.3.meanQ",
+  Q4 = "D:/QFIELS/200sample/SNP/faststructure/K4_cv5.4.meanQ",
+  Q5 = "D:/QFIELS/200sample/SNP/faststructure/K5_cv5.5.meanQ",
+  Q6 = "D:/QFIELS/200sample/SNP/faststructure/K6_cv5.6.meanQ",
+  Q7 = "D:/QFIELS/200sample/SNP/faststructure/K7_cv5.7.meanQ",
+  Q8 = "D:/QFIELS/200sample/SNP/faststructure/K8_cv5.8.meanQ",
+  Q9 = "D:/QFIELS/200sample/SNP/faststructure/K9_cv5.9.meanQ"
+)
+
+# ------------------------------
+# 2. fam 文件（群体名 & 个体 ID）
+# ------------------------------
+fam_data <- read.table(famfile, header = FALSE, stringsAsFactors = FALSE)
+sample_groups <- fam_data$V1   # 群体名
+indiv_names   <- fam_data$V2   # 个体 ID
+
+# 统一群体名称：将JMX-*和WYL-*统一为JMX和WYL
+sample_groups <- ifelse(grepl("^JMX", sample_groups), "JMX", sample_groups)
+sample_groups <- ifelse(grepl("^WYL", sample_groups), "WYL", sample_groups)
+
+# 指定群体顺序
+group_order <- c("DRS", "LCJ", "HJLL", "JMX",  "RX", "HYX", "DA", "DST", "EJ", 
+                 "ZJP", "ST", "FZA", "GHX", "YZY", "YK", "LS", "CP", "CX", "JD", 
+                 "YX", "LX", "QDH", "XC", "SL", "LQ", "SLZ", "XNF", "SK", 
+                 "SFZ", "SXK", "WYL")
+
+# 总样本数（保证所有图宽度一致）
+n_samples <- nrow(fam_data)
+
+# ------------------------------
+# 3. 绘图函数
+# ------------------------------
+process_qfile <- function(qfile, sample_groups, indiv_names, group_order, qlabel, show_labels = FALSE) {
+  qmat <- as.matrix(read.table(qfile, header = FALSE))
+  
+  # 样本排序
+  sample_order <- order(factor(sample_groups, levels = group_order))
+  qmat_ordered <- qmat[sample_order, ]
+  ordered_groups <- sample_groups[sample_order]
+  ordered_indiv  <- indiv_names[sample_order]
+  
+  # 数据框
+  df <- as.data.frame(qmat_ordered)
+  df$Sample <- ordered_indiv
+  df$Group  <- ordered_groups
+  df$SampleID <- 1:nrow(df)
+  
+  # 转长表
+  df_long <- df %>%
+    pivot_longer(cols = starts_with("V"), names_to = "Cluster", values_to = "Prop")
+  
+  # 群体边界
+  group_info <- df %>%
+    group_by(Group) %>%
+    summarise(Start = min(SampleID), End = max(SampleID), .groups = "drop") %>%
+    mutate(Mid = (Start + End)/2)
+  
+  # 绘图
+  p <- ggplot(df_long, aes(x = SampleID, y = Prop, fill = Cluster)) +
+    geom_bar(stat = "identity", color = NA, width = 1) +   # 无边框
+    geom_vline(xintercept = group_info$End + 0.5, linetype = "dashed", color = "white") +
+    theme_classic() +
+    theme(
+      axis.text.y = element_text(size = 10),
+      axis.title.x = element_blank(),
+      legend.position = "none",
+      plot.margin = margin(0.2, 0.2, 0.2, 0.2, "cm")
+    ) +
+    ylab("Ancestry proportion") +
+    ggtitle(qlabel)
+  
+  # 横轴设置（统一宽度，控制是否显示群体名）
+  if (show_labels) {
+    p <- p + scale_x_continuous(
+      limits = c(0.5, n_samples + 0.5),
+      breaks = group_info$Mid, labels = group_info$Group,
+      expand = c(0,0)
+    ) +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 10))
+  } else {
+    p <- p + scale_x_continuous(
+      limits = c(0.5, n_samples + 0.5),
+      expand = c(0,0)
+    ) +
+      theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+  }
+  
+  return(p)
+}
+
+# ------------------------------
+# 4. 生成 2Q-9Q 图（修正文件路径）
+# ------------------------------
+p2 <- process_qfile(qfiles$Q2, sample_groups, indiv_names, group_order, "K=2")
+p3 <- process_qfile(qfiles$Q3, sample_groups, indiv_names, group_order, "K=3")
+p4 <- process_qfile(qfiles$Q4, sample_groups, indiv_names, group_order, "K=4")
+p5 <- process_qfile(qfiles$Q5, sample_groups, indiv_names, group_order, "K=5")
+p6 <- process_qfile(qfiles$Q6, sample_groups, indiv_names, group_order, "K=6")
+p7 <- process_qfile(qfiles$Q7, sample_groups, indiv_names, group_order, "K=7")
+p8 <- process_qfile(qfiles$Q8, sample_groups, indiv_names, group_order, "K=8")
+p9 <- process_qfile(qfiles$Q9, sample_groups, indiv_names, group_order, "K=9", show_labels = TRUE)
+
+# ------------------------------
+# 5. 拼接并保存（修正拼接语法）
+# ------------------------------
+final_plot <- p2 / p3 / p4 / p5 / p6 / p7 / p8 / p9  +
+  plot_annotation(title = "Population Structure Analysis (K=2 to 9) - SNP Data",
+                  theme = theme(plot.title = element_text(hjust = 0.5, size = 16, face = "bold")))
+
+# 保存图片
+ggsave("D:/QFIELS/200sample/SNP/faststructure/SNP_structure_all_K_vertical.pdf", 
+       plot = final_plot, width = 16, height = 20)
+
+cat("绘图完成！图片已保存为 SNP_structure_all_K_vertical.pdf\n")
+
+# 显示图形
+print(final_plot)
+getwd()
