@@ -55,6 +55,11 @@ Filled 450810 alleles
 307130013 1/1
 124661667 ./.
 
+#位点数量
+bcftools view -H 200_samples_no_partial_missing.vcf | wc -l
+10546196
+
+
 # 3进行LD过滤（生成.prune.in文件）
 plink --vcf 200_samples_no_partial_missing.vcf \
       --indep-pairwise 50 5 0.2 \
