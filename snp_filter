@@ -1,4 +1,4 @@
-#方法：使用--remove-indv（直接指定个体名）
+#方法：使用--remove-indv（直接指定个体名）202sample
 # 去除ZJS1和ZJS10 两个个体+过滤二等位
 
  #不带树
@@ -11,7 +11,7 @@
          --remove-indv ZJS_1 \
          --remove-indv ZJS_10 &
  从90704251个位点中保留81358912
- #2.过滤maf和miss和深度、质量值
+ #2.过滤maf和miss和深度、质量值   200sample
 #使用vcftools进行MAF和缺失率过滤、最小基因型质量值为10、最小位点质量值为30、最小平均测序深度为6
 vcftools --vcf 200_samples_bia_snp.recode.vcf \
          --minGQ 10 \
@@ -24,7 +24,7 @@ vcftools --vcf 200_samples_bia_snp.recode.vcf \
          --out 200_samples_er_snp_filtered_vcftools
 从81358912中保留10546196位点
 
-有半缺失基因型
+# 有半缺失基因型  200sample
  bcftools query -f '[%GT\n]' 200_samples_er_snp_filtered_vcftools.recode.vcf | \
 >   sort | uniq -c | sort -nr | head -20
 1252532189 0/0
@@ -35,19 +35,19 @@ vcftools --vcf 200_samples_bia_snp.recode.vcf \
    5458 ./1
 
 
-# 这个专门用于处理部分缺失基因型，把半缺失转为缺失
+# 这个专门用于处理部分缺失基因型，把半缺失转为缺失  200sample
 bcftools +setGT 200_samples_er_snp_filtered_vcftools.recode.vcf \
   -- -t ./x -n . \
   > 200_samples_no_partial_missing.vcf
 
-结果
+#  结果  200sample
 bcftools +setGT 200_samples_er_snp_filtered_vcftools.recode.vcf \
 >   -- -t ./x -n . \
 >   > 200_samples_no_partial_missing.vcf
 Filled 450810 alleles
 
 
-#检查一下基因型是否转化
+#检查一下基因型是否转化  200sample
  bcftools query -f '[%GT\n]' 200_samples_no_partial_missing.vcf | \
 >   sort | uniq -c | sort -nr | head -10
 1252532189 0/0
@@ -55,9 +55,24 @@ Filled 450810 alleles
 307130013 1/1
 124661667 ./.
 
-#位点数量
+#位点数量   200sample
 bcftools view -H 200_samples_no_partial_missing.vcf | wc -l
 10546196
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # 3进行LD过滤（生成.prune.in文件）
