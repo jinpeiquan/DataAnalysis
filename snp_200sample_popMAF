@@ -1,1 +1,389 @@
+#创建群体样本名
 
+# 1. 删除200sample.pop目录
+rm -rf "/public1/guop/jpq/workspace/guihuasnp/202_2sample/10546196snp/200sample.pop"
+
+# 2. 重新创建群体文件
+vcf_file="/public1/guop/jpq/workspace/guihuasnp/202_2sample/10546196snp/200_samples_no_partial_missing.vcf"
+pop_file="/public1/guop/jpq/workspace/guihuasnp/202_2sample/10546196snp/200sample.pop"
+
+# 直接创建群体文件
+bcftools query -l "$vcf_file" | sort | while read sample; do
+    # 使用样本名的字母前缀作为群体名
+    if [[ "$sample" =~ ^([A-Za-z]+) ]]; then
+        prefix="${BASH_REMATCH[1]}"
+        echo -e "$sample\t$prefix"
+    else
+        echo -e "$sample\tUnknown"
+    fi
+done > "$pop_file"
+
+# 验证
+echo "群体文件已创建: $pop_file"
+wc -l "$pop_file"
+head -10 "$pop_file"
+
+
+
+#1.创建一个群体文件200sample.pop
+CP_1	CP
+CP_2	CP
+CP_3	CP
+CP_4	CP
+CP_5	CP
+CP_6	CP
+CX_2	CX
+CX_3	CX
+CX_4	CX
+CX_5	CX
+CX_7	CX
+CX_9	CX
+DA_1	DA
+DA_2	DA
+DA_4	DA
+DA_6	DA
+DA_7	DA
+DA_8	DA
+DRS_1	DRS
+DRS_2	DRS
+DRS_4	DRS
+DRS_5	DRS
+DRS_6	DRS
+DRS_7	DRS
+DST_1	DST
+DST_2	DST
+DST_4	DST
+DST_5	DST
+DST_7	DST
+DST_8	DST
+DST_9	DST
+EJ_1	EJ
+EJ_3	EJ
+EJ_4	EJ
+EJ_6	EJ
+EJ_7	EJ
+EJ_8	EJ
+FZA_1	FZA
+FZA_3	FZA
+FZA_4	FZA
+FZA_5	FZA
+FZA_6	FZA
+FZA_8	FZA
+GHX_1	GHX
+GHX_10	GHX
+GHX_13	GHX
+GHX_2	GHX
+GHX_4	GHX
+GHX_8	GHX
+GHX_9	GHX
+HJLL_1	HJLL
+HJLL_2	HJLL
+HJLL_3	HJLL
+HJLL_6	HJLL
+HJLL_7	HJLL
+HYX_1	HYX
+HYX_2	HYX
+HYX_3	HYX
+HYX_4	HYX
+HYX_5	HYX
+HYX_6	HYX
+JD_1	JD
+JD_3	JD
+JD_4	JD
+JD_5	JD
+JD_6	JD
+JD_7	JD
+JD_9	JD
+JMX_1	JMX
+JMX-15	JMX
+JMX-16	JMX
+JMX-17	JMX
+JMX-18	JMX
+JMX-19	JMX
+JMX_2	JMX
+JMX_3	JMX
+LCJ_10	LCJ
+LCJ_11	LCJ
+LCJ_13	LCJ
+LCJ_6	LCJ
+LCJ_7	LCJ
+LCJ_9	LCJ
+LQ_13	LQ
+LQ_14	LQ
+LQ_15	LQ
+LQ_8	LQ
+LQ_9	LQ
+LS_1	LS
+LS_10	LS
+LS_12	LS
+LS_2	LS
+LS_5	LS
+LS_6	LS
+LS_7	LS
+LX_2	LX
+LX_4	LX
+LX_5	LX
+LX_6	LX
+LX_8	LX
+LX_9	LX
+QDH_1	QDH
+QDH_10	QDH
+QDH_11	QDH
+QDH_12	QDH
+QDH_14	QDH
+QDH_2	QDH
+QDH_3	QDH
+QDH_4	QDH
+QDH_6	QDH
+QDH_7	QDH
+RX_2	RX
+RX_4	RX
+RX_5	RX
+RX_7	RX
+RX_8	RX
+RX_9	RX
+SFZ_1	SFZ
+SFZ_10	SFZ
+SFZ_2	SFZ
+SFZ_3	SFZ
+SFZ_4	SFZ
+SFZ_5	SFZ
+SFZ_6	SFZ
+SFZ_7	SFZ
+SFZ_8	SFZ
+SK_1	SK
+SK_10	SK
+SK_2	SK
+SK_4	SK
+SK_7	SK
+SK_8	SK
+SK_9	SK
+SL_1	SL
+SL_2	SL
+SL_3	SL
+SL_4	SL
+SL_5	SL
+SLZ_1	SLZ
+SLZ_3	SLZ
+SLZ_4	SLZ
+SLZ_6	SLZ
+SLZ_7	SLZ
+SLZ_8	SLZ
+ST_1	ST
+ST_2	ST
+ST_3	ST
+ST_4	ST
+ST_5	ST
+ST_6	ST
+ST_7	ST
+ST_8	ST
+SXK_1	SXK
+SXK_2	SXK
+SXK_3	SXK
+SXK_4	SXK
+SXK_5	SXK
+SXK_6	SXK
+WYL-2	WYL
+WYL_3	WYL
+WYL_4	WYL
+WYL-5	WYL
+WYL_6	WYL
+WYL-7	WYL
+WYL_8	WYL
+XC_1	XC
+XC_2	XC
+XC_5	XC
+XC_6	XC
+XC_7	XC
+XC_8	XC
+XNF_1	XNF
+XNF_3	XNF
+XNF_4	XNF
+XNF_5	XNF
+XNF_6	XNF
+XNF_7	XNF
+YK_1	YK
+YK_3	YK
+YK_4	YK
+YK_7	YK
+YK_8	YK
+YX_1	YX
+YX_2	YX
+YX_3	YX
+YX_6	YX
+YX_7	YX
+YZY_10	YZY
+YZY_11	YZY
+YZY_2	YZY
+YZY_4	YZY
+YZY_7	YZY
+YZY_8	YZY
+ZJP_1	ZJP
+ZJP_10	ZJP
+ZJP_2	ZJP
+ZJP_3	ZJP
+ZJP_4	ZJP
+ZJP_5	ZJP
+ZJP_7	ZJP
+ZJP_8	ZJP
+
+
+#2.vcf文件
+200_samples_no_partial_missing.vcf
+
+#创建simple_direct_maf.sh脚本，分析群体MAF
+nano simple_direct_maf.sh
+# 先清理
+rm -rf fixed_final_* 2>/dev/null
+
+# 创建最简单直接的脚本
+cat > simple_direct_maf.sh << 'EOF'
+#!/bin/bash
+
+# ===========================================
+# 最简单直接的群体MAF分析
+# 不再搞复杂的选择，直接处理所有群体
+# ===========================================
+
+VCF="200_samples_no_partial_missing.vcf"
+POP="200sample.pop"
+OUTDIR="simple_results_$(date +%Y%m%d_%H%M%S)"
+
+echo "============================================="
+echo "最简单直接MAF分析"
+echo "============================================="
+echo "开始时间: $(date)"
+echo "输出目录: $OUTDIR"
+
+# 创建目录
+mkdir -p "$OUTDIR"
+mkdir -p "$OUTDIR/ids"
+
+# 第一步：显示群体信息
+echo -e "\n第一步：显示群体信息"
+echo "---------------------------------------------"
+
+awk '{print $2}' "$POP" | sort | uniq -c | sort -nr | tee "$OUTDIR/group_info.txt"
+
+# 第二步：为每个群体创建ID文件
+echo -e "\n第二步：创建ID文件"
+echo "---------------------------------------------"
+
+# 获取所有群体
+awk '{print $2}' "$POP" | sort | uniq > "$OUTDIR/all_groups.txt"
+
+TOTAL_GROUPS=$(wc -l < "$OUTDIR/all_groups.txt")
+echo "总群体数: $TOTAL_GROUPS"
+
+# 为每个群体创建ID文件
+while read GROUP; do
+    echo -n "创建 $GROUP..."
+    awk -v g="$GROUP" '$2 == g {print "0", $1}' "$POP" > "$OUTDIR/ids/${GROUP}.ids"
+    COUNT=$(wc -l < "$OUTDIR/ids/${GROUP}.ids")
+    echo " $COUNT 个样本"
+done < "$OUTDIR/all_groups.txt"
+
+# 第三步：开始处理所有群体
+echo -e "\n第三步：开始处理所有群体"
+echo "---------------------------------------------"
+echo "将处理所有 $TOTAL_GROUPS 个群体"
+echo "按 Ctrl+C 可以随时停止"
+echo ""
+
+read -p "按回车键开始，或按 Ctrl+C 取消..." 
+
+# 处理每个群体
+COUNT=0
+SUCCESS=0
+
+while read GROUP; do
+    ((COUNT++))
+    
+    echo -e "\n--- [$COUNT/$TOTAL_GROUPS] 处理: $GROUP ---"
+    
+    ID_FILE="$OUTDIR/ids/${GROUP}.ids"
+    SAMPLE_COUNT=$(wc -l < "$ID_FILE")
+    echo "样本数: $SAMPLE_COUNT"
+    
+    # 处理群体
+    echo "1. 生成BED文件..."
+    plink --vcf "$VCF" \
+          --const-fid \
+          --keep "$ID_FILE" \
+          --make-bed \
+          --allow-extra-chr \
+          --out "$OUTDIR/${GROUP}" \
+          --set-missing-var-ids @:# 2>/dev/null
+    
+    if [[ -f "$OUTDIR/${GROUP}.bed" ]]; then
+        echo "2. 计算MAF..."
+        plink --bfile "$OUTDIR/${GROUP}" \
+              --allow-extra-chr \
+              --freq \
+              --out "$OUTDIR/${GROUP}_maf" 2>/dev/null
+        
+        if [[ -f "$OUTDIR/${GROUP}_maf.frq" ]]; then
+            SNP_COUNT=$(( $(wc -l < "$OUTDIR/${GROUP}_maf.frq") - 1 ))
+            echo "✓ 成功: $SNP_COUNT 个SNP"
+            ((SUCCESS++))
+            
+            # 清理中间文件
+            rm -f "$OUTDIR/${GROUP}.bed" "$OUTDIR/${GROUP}.bim" "$OUTDIR/${GROUP}.fam"
+        else
+            echo "✗ MAF计算失败"
+        fi
+    else
+        echo "✗ BED生成失败"
+    fi
+    
+    # 显示进度
+    echo "进度: $COUNT/$TOTAL_GROUPS 完成"
+    
+done < "$OUTDIR/all_groups.txt"
+
+# 第四步：结果汇总
+echo -e "\n\n============================================="
+echo "分析完成"
+echo "============================================="
+echo "完成时间: $(date)"
+echo "总群体数: $TOTAL_GROUPS"
+echo "成功: $SUCCESS"
+echo "失败: $((TOTAL_GROUPS - SUCCESS))"
+
+# 显示结果
+echo -e "\n生成的MAF文件:"
+find "$OUTDIR" -name "*_maf.frq" -type f | sort | while read FILE; do
+    GROUP=$(basename "$FILE" | sed 's/_maf.frq//')
+    SNP_COUNT=$(( $(wc -l < "$FILE") - 1 ))
+    SAMPLE_COUNT=$(wc -l < "$OUTDIR/ids/${GROUP}.ids" 2>/dev/null || echo "?")
+    printf "  %-6s: %2d样本, %8d SNPs\n" "$GROUP" "$SAMPLE_COUNT" "$SNP_COUNT"
+done
+
+# 创建汇总文件
+echo -e "\n创建汇总文件..."
+{
+    echo "群体名,样本数,SNP数"
+    find "$OUTDIR" -name "*_maf.frq" -type f | sort | while read FILE; do
+        GROUP=$(basename "$FILE" | sed 's/_maf.frq//')
+        SNP_COUNT=$(( $(wc -l < "$FILE") - 1 ))
+        SAMPLE_COUNT=$(wc -l < "$OUTDIR/ids/${GROUP}.ids" 2>/dev/null || echo "0")
+        echo "$GROUP,$SAMPLE_COUNT,$SNP_COUNT"
+    done
+} > "$OUTDIR/maf_summary.csv"
+
+echo "✓ 汇总文件: $OUTDIR/maf_summary.csv"
+echo -e "\n输出目录: $OUTDIR"
+EOF
+
+chmod +x simple_direct_maf.sh
+
+echo "最简单直接脚本已创建: simple_direct_maf.sh"
+echo "运行命令: bash simple_direct_maf.sh"
+echo ""
+echo "这个脚本会："
+echo "1. 直接处理所有31个群体"
+echo "2. 不搞复杂的选择逻辑"
+echo "3. 逐个群体处理，可随时停止"
+echo "4. 生成汇总结果"
+
+bash simple_direct_maf.sh
