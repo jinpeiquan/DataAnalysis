@@ -501,3 +501,242 @@ print("\n✓ 所有合并完成!")
 EOF
 #运行
 python3 merge_all_maf_fixed.py
+
+
+
+
+
+
+
+#结果
+nano merge_all_maf_fixed.py
+  GNU nano 2.3.1                           文件： merge_all_maf_fixed.py
+
+
+# 8. 显示总体统计
+print("\n=== 总体统计 ===")
+print(f"总群体数: {len(maf_files)}")
+print(f"总SNP数: {total_snps:,}")
+print(f"总数据点: {transposed.size:,}")
+print(f"缺失值: {transposed.isna().sum().sum():,}")
+print(f"缺失率: {transposed.isna().sum().sum()/transposed.size*100:.2f}%")
+
+# 计算非缺失值的统计
+all_maf_values = transposed.values.flatten()
+all_maf_values = all_maf_values[~np.isnan(all_maf_values)]
+
+if len(all_maf_values) > 0:
+    print(f"平均MAF: {np.mean(all_maf_values):.4f}")
+    print(f"MAF中位数: {np.median(all_maf_values):.4f}")
+    print(f"MAF标准差: {np.std(all_maf_values):.4f}")
+    print(f"MAF范围: {np.min(all_maf_values):.4f} - {np.max(all_maf_values):.4f}")
+
+    # MAF分布
+    maf_bins = [0, 0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5]
+    maf_labels = ['<0.01', '0.01-0.05', '0.05-0.1', '0.1-0.2', '0.2-0.3', '0.3-0.4', '0.4-0.5']
+    maf_dist = pd.cut(all_maf_values, bins=maf_bins, labels=maf_labels, include_lowest=True)
+    dist_counts = pd.value_counts(maf_dist, sort=False)
+
+    print("\nMAF分布:")
+    for label, count in dist_counts.items():
+        percentage = count / len(all_maf_values) * 100
+        print(f"  {label}: {count:,} ({percentage:.1f}%)")
+
+print("\n✓ 所有合并完成!")
+EOF
+
+
+
+
+
+                                                         [ 已写入108 行 ]
+
+(base) [guop@node01 simple_results_20260107_112909]$ python3 merge_all_maf_fixed.py
+Traceback (most recent call last):
+  File "/public1/guop/jpq/workspace/guihuasnp/202_2sample/10546196snp/simple_results_20260107_112909/merge_all_maf_fixed.py", line 1, in <module>
+    cat > merge_all_maf_fixed.py << 'EOF'
+    ^^^
+NameError: name 'cat' is not defined
+(base) [guop@node01 simple_results_20260107_112909]$ cat > merge_all_maf_fixed.py << 'EOF'
+> import pandas as pd
+> import numpy as np
+> import os
+>
+> print("开始合并所有群体的MAF结果...")
+>
+> # 1. 获取所有MAF文件
+> maf_files = [f for f in os.listdir('.') if f.endswith('_maf.frq') and os.path.isfile(f)]
+> maf_files.sort()
+>
+> print(f"找到 {len(maf_files)} 个MAF文件")
+>
+> # 2. 读取第一个文件获取SNP列表和结构
+> first_file = maf_files[0]
+> print(f"\n读取第一个文件作为模板: {first_file}")
+>
+> # 使用正则表达式分隔空白字符
+> df_template = pd.read_csv(first_file, sep=r'\s+')
+> snp_list = df_template['SNP'].tolist()
+> chr_list = df_template['CHR'].tolist()
+> total_snps = len(snp_list)
+>
+> print(f"总SNP数量: {total_snps:,}")
+>
+> # 3. 创建空的DataFrame来存储所有MAF值
+> print("\n创建合并矩阵...")
+> maf_matrix = pd.DataFrame({
+>     'CHR': chr_list,
+>     'SNP': snp_list
+> })
+>
+> # 4. 逐个读取文件并合并
+> for maf_file in maf_files:
+>     group_name = maf_file.replace('_maf.frq', '')
+>     print(f"处理: {group_name}")
+>
+>     try:
+>         df = pd.read_csv(maf_file, sep=r'\s+')
+>         # 只保留MAF列，并重命名为群体名
+>         maf_values = df['MAF']
+>         maf_matrix[group_name] = maf_values
+>     except Exception as e:
+>         print(f"  错误: {e}")
+>         maf_matrix[group_name] = np.nan
+>
+> # 5. 保存完整矩阵
+> print("\n保存完整矩阵...")
+> maf_matrix.to_csv('all_groups_maf_full.csv', index=False)
+> print(f"✓ 完整矩阵保存: all_groups_maf_full.csv")
+> print(f"  文件形状: {maf_matrix.shape[0]} 行 × {maf_matrix.shape[1]} 列")
+>
+> # 6. 创建转置版本（群体×SNP）
+> print("\n创建转置版本（群体×SNP）...")
+> # 设置SNP为索引
+> maf_for_transpose = maf_matrix.set_index('SNP')
+> # 移除CHR列用于转置
+> maf_for_transpose = maf_for_transpose.drop('CHR', axis=1)
+> # 转置
+> transposed = maf_for_transpose.T
+> transposed.to_csv('all_groups_maf_transposed.csv')
+> print(f"✓ 转置矩阵保存: all_groups_maf_transposed.csv")
+> print(f"  文件形状: {transposed.shape[0]} 群体 × {transposed.shape[1]} SNP")
+>
+> # 7. 创建统计摘要
+> print("\n生成统计摘要...")
+> stats = pd.DataFrame({
+>     'Population': transposed.index.tolist(),
+>     'Mean_MAF': transposed.mean(axis=1).round(4),
+>     'Min_MAF': transposed.min(axis=1).round(4),
+>     'Max_MAF': transposed.max(axis=1).round(4),
+>     'Missing_Rate': (transposed.isna().sum(axis=1) / transposed.shape[1] * 100).round(2)
+> })
+>
+> stats.to_csv('maf_statistics.csv', index=False)
+> print(f"✓ 统计摘要保存: maf_statistics.csv")
+>
+> # 8. 显示总体统计
+> print("\n=== 总体统计 ===")
+> print(f"总群体数: {len(maf_files)}")
+> print(f"总SNP数: {total_snps:,}")
+> print(f"总数据点: {transposed.size:,}")
+> print(f"缺失值: {transposed.isna().sum().sum():,}")
+> print(f"缺失率: {transposed.isna().sum().sum()/transposed.size*100:.2f}%")
+>
+> # 计算非缺失值的统计
+> all_maf_values = transposed.values.flatten()
+> all_maf_values = all_maf_values[~np.isnan(all_maf_values)]
+>
+> if len(all_maf_values) > 0:
+>     print(f"平均MAF: {np.mean(all_maf_values):.4f}")
+>     print(f"MAF中位数: {np.median(all_maf_values):.4f}")
+>     print(f"MAF标准差: {np.std(all_maf_values):.4f}")
+>     print(f"MAF范围: {np.min(all_maf_values):.4f} - {np.max(all_maf_values):.4f}")
+>
+>     # MAF分布
+>     maf_bins = [0, 0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5]
+>     maf_labels = ['<0.01', '0.01-0.05', '0.05-0.1', '0.1-0.2', '0.2-0.3', '0.3-0.4', '0.4-0.5']
+>     maf_dist = pd.cut(all_maf_values, bins=maf_bins, labels=maf_labels, include_lowest=True)
+>     dist_counts = pd.value_counts(maf_dist, sort=False)
+>
+>     print("\nMAF分布:")
+>     for label, count in dist_counts.items():
+>         percentage = count / len(all_maf_values) * 100
+>         print(f"  {label}: {count:,} ({percentage:.1f}%)")
+>
+> print("\n✓ 所有合并完成!")
+> EOF
+(base) [guop@node01 simple_results_20260107_112909]$ python3 merge_all_maf_fixed.py
+开始合并所有群体的MAF结果...
+找到 31 个MAF文件
+
+读取第一个文件作为模板: CP_maf.frq
+总SNP数量: 10,546,196
+
+创建合并矩阵...
+处理: CP
+处理: CX
+处理: DA
+处理: DRS
+处理: DST
+处理: EJ
+处理: FZA
+处理: GHX
+处理: HJLL
+处理: HYX
+处理: JD
+处理: JMX
+处理: LCJ
+处理: LQ
+处理: LS
+处理: LX
+处理: QDH
+处理: RX
+处理: SFZ
+处理: SK
+处理: SLZ
+处理: SL
+处理: ST
+处理: SXK
+处理: WYL
+处理: XC
+处理: XNF
+处理: YK
+处理: YX
+处理: YZY
+处理: ZJP
+
+保存完整矩阵...
+✓ 完整矩阵保存: all_groups_maf_full.csv
+  文件形状: 10546196 行 × 33 列
+
+创建转置版本（群体×SNP）...
+✓ 转置矩阵保存: all_groups_maf_transposed.csv
+  文件形状: 31 群体 × 10546196 SNP
+
+生成统计摘要...
+✓ 统计摘要保存: maf_statistics.csv
+
+=== 总体统计 ===
+总群体数: 31
+总SNP数: 10,546,196
+总数据点: 326,932,076
+缺失值: 528,366
+缺失率: 0.16%
+平均MAF: 0.1409
+MAF中位数: 0.0833
+MAF标准差: 0.1562
+MAF范围: 0.0000 - 0.5000
+/public1/guop/jpq/workspace/guihuasnp/202_2sample/10546196snp/simple_results_20260107_112909/merge_all_maf_fixed.py:99: FutureWarning: pandas.value_counts is deprecated and will be removed in a future version. Use pd.Series(obj).value_counts() instead.
+  dist_counts = pd.value_counts(maf_dist, sort=False)
+
+MAF分布:
+  <0.01: 133,567,958 (40.9%)
+  0.01-0.05: 1,139,643 (0.3%)
+  0.05-0.1: 48,367,809 (14.8%)
+  0.1-0.2: 45,040,709 (13.8%)
+  0.2-0.3: 39,388,581 (12.1%)
+  0.3-0.4: 29,296,368 (9.0%)
+  0.4-0.5: 29,602,642 (9.1%)
+
+✓ 所有合并完成!
+(base) [guop@node01 simple_results_20260107_112909]$
