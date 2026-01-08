@@ -1,1 +1,62 @@
+1.#175样本处理基因型，把25873 1/2 转成1/1 55803×175=9765，525
+bcftools query -f '[%GT\t]\n' 175_samples_simple_fixed.vcf | \
+> tr '\t' '\n' | \
+> sort | uniq -c | sort -nr | head -10
+4736368 0/0
+1903326 1/1
+1646407 0/1
+1373239 1/0
+  80312 ./.
+  55803
+  25873 1/2
+(base) [guop@node01 finally]$ ^C
+(base) [guop@node01 finally]$ awk '
+> BEGIN {OFS="\t"}
+> /^#/ {print; next}  # 保留注释行
+> {
+>     for(i=10; i<=NF; i++) {  # 从第10列开始是样本基因型
+>         split($i, parts, ":")
+>         if(parts[1] == "1/2" || parts[1] == "2/1") {
+>             parts[1] = "1/1"
+>         }
+>         # 重新组合
+>         $i = parts[1]
+>         for(j=2; j<=length(parts); j++) {
+>             $i = $i ":" parts[j]
+>         }
+>     }
+>     print
+> }' 175_samples_simple_fixed.vcf > 175_samples_modified.vcf
+(base) [guop@node01 finally]$ ll
+总用量 25680560
+-rw-r--r--. 1 guop guop   19531225 12月 26 16:09 175sample27pop.lfmm
+-rw-rw-r--. 1 guop guop 8711262502 12月  5 16:37 175_samples_filtere.recode.vcf
+-rw-rw-r--. 1 guop guop   50764330 12月 26 18:31 175_samples_final_NA.raw
+-rw-rw-r--. 1 guop guop 8711262502 1月   6 14:45 175_samples_modified.vcf
+-rw-rw-r--. 1 guop guop 8711262502 12月 26 18:05 175_samples_simple_fixed.vcf
+-rw-rw-r--. 1 guop guop   50790028 12月 17 20:51 175_samples_sv.plink.recodeA.raw
+-rw-rw-r--. 1 guop guop       4341 1月   6 14:48 extract_genotypes.py
+-rw-rw-r--. 1 guop guop   41868506 12月 26 15:39 single_base_fixed.vcf
+-rw-rw-r--. 1 guop guop          0 1月   6 14:28 sort
+(base) [guop@node01 finally]$ ^C
+(base) [guop@node01 finally]$ bcftools query -f '[%GT\t]\n' 175_samples_modified.vcf | \
+> tr '\t' '\n' | \
+> sort | uniq -c | sort -nr | head -10
+4736368 0/0
+1929199 1/1
+1646407 0/1
+1373239 1/0
+  80312 ./.
+  55803
 
+
+
+2.#200样本处理基因型，把 29808 1/2转成1/1，基因型数量200×55803=11，160，600
+bcftools query -f '[%GT\n]' 200_samples_maf_miss.recode.vcf | \
+>  sort | uniq -c | sort -nr | head -20
+5388114 0/0
+2165899 1/1
+1905856 0/1
+1582615 1/0
+  88308 ./.
+  29808 1/2
