@@ -51,6 +51,11 @@ bcftools query -f '[%GT\t]\n' 175_samples_simple_fixed.vcf | \
 
 
 
+
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx200样本xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+
+
 #1.#200样本处理基因型，把 29808 1/2转成1/1，基因型数量200×55803=11，160，600
 bcftools query -f '[%GT\n]' 200_samples_maf_miss.recode.vcf | \
 >  sort | uniq -c | sort -nr | head -20
