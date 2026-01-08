@@ -51,7 +51,7 @@ bcftools query -f '[%GT\t]\n' 175_samples_simple_fixed.vcf | \
 
 
 
-2.#200样本处理基因型，把 29808 1/2转成1/1，基因型数量200×55803=11，160，600
+#1.#200样本处理基因型，把 29808 1/2转成1/1，基因型数量200×55803=11，160，600
 bcftools query -f '[%GT\n]' 200_samples_maf_miss.recode.vcf | \
 >  sort | uniq -c | sort -nr | head -20
 5388114 0/0
@@ -60,3 +60,26 @@ bcftools query -f '[%GT\n]' 200_samples_maf_miss.recode.vcf | \
 1582615 1/0
   88308 ./.
   29808 1/2
+
+#2.把 29808 1/2转成1/1，基因型数量200×55803=11，160，600
+awk '
+BEGIN {OFS="\t"}
+/^#/ {print; next}
+{
+    for(i=10; i<=NF; i++) {
+        # 分割基因型字段
+        split($i, parts, ":")
+        
+        # 修改基因型部分
+        if(parts[1] == "1/2" || parts[1] == "2/1") {
+            parts[1] = "1/1"
+        }
+        
+        # 重新组合整个字段
+        $i = parts[1]
+        for(j=2; j in parts; j++) {
+            $i = $i ":" parts[j]
+        }
+    }
+    print
+}' 200_samples_maf_miss.recode.vcf > 200_samples_modified.vcf
