@@ -185,3 +185,263 @@ Note: No phenotypes present.
 sed '1d; s/NA/9/g' 200_samples_sv.plink.recodeA.raw | \
 awk '{ $1=$2=$3=$4=$5=$6=""; print substr($0, index($0,$7)) }' > 200_samples_sv.plink.recodeA.lfmm
 #结果
+
+
+
+
+
+#31Population计算maf
+#1.运行这个simple_direct_maf_modified.sh或者simple_maf_memory_optimized.sh脚本
+#2.创建提取MAF的脚本
+cat > extract_maf.sh << 'EOF'
+#!/bin/bash
+# extract_maf.sh - 从bcftools输出中提取MAF值
+
+if [ $# -ne 1 ]; then
+    echo "用法: $0 <输入.frq文件>"
+    exit 1
+fi
+
+input_file="$1"
+output_file="${input_file%.frq}_extracted.txt"
+
+echo "处理: $input_file -> $output_file"
+
+awk '
+BEGIN {
+    OFS="\t"
+    print "CHROM", "POS", "REF_ALLELE", "ALT_ALLELE", "MAF", "N_CHR"
+}
+NR==1 {
+    # 检查文件格式
+    if ($1 != "CHROM" || $2 != "POS") {
+        print "警告：文件格式可能不正确" > "/dev/stderr"
+    }
+    next
+}
+
+{
+    chrom=$1
+    pos=$2
+    n_alleles=$3
+    n_chr=$4
+    
+    # 初始化变量
+    min_freq=1.0
+    ref_allele=""
+    alt_allele=""
+    
+    # 遍历所有等位基因频率对（从第5列开始）
+    allele_count=0
+    for(i=5;i<=NF;i++) {
+        if ($i == "") continue
+        split($i, af_pair, ":")
+        if (length(af_pair) < 2) continue
+        
+        allele=af_pair[1]
+        freq=af_pair[2]
+        
+        # 更新最小频率
+        if (freq < min_freq) {
+            min_freq=freq
+        }
+        
+        # 记录第一个和第二个等位基因
+        allele_count++
+        if (allele_count == 1) {
+            ref_allele=allele
+        } else if (allele_count == 2) {
+            alt_allele=allele
+        }
+    }
+    
+    # 输出结果
+    if (ref_allele != "" && alt_allele != "") {
+        print chrom, pos, ref_allele, alt_allele, min_freq, n_chr
+    } else {
+        # 处理可能的问题
+        print chrom, pos, "N/A", "N/A", "N/A", n_chr
+    }
+}' "$input_file" > "$output_file"
+
+# 检查输出
+if [ $? -eq 0 ] && [ -s "$output_file" ]; then
+    echo "成功: 提取了 $(wc -l < "$output_file") 行数据"
+else
+    echo "错误: 提取失败" >&2
+    exit 1
+fi
+EOF
+
+# 给脚本执行权限
+chmod +x extract_maf.sh
+
+
+#3.批量提取所有文件的MAF值
+echo "=== 开始批量提取MAF值 ==="
+
+# 创建处理日志
+log_file="maf_extraction.log"
+echo "MAF提取日志 - $(date)" > "$log_file"
+
+# 计数器
+success_count=0
+fail_count=0
+
+# 处理每个.frq文件
+for file in *_maf.frq; do
+    echo "处理: $file" | tee -a "$log_file"
+    
+    if ./extract_maf.sh "$file"; then
+        success_count=$((success_count + 1))
+        echo "✓ 成功" | tee -a "$log_file"
+    else
+        fail_count=$((fail_count + 1))
+        echo "✗ 失败" | tee -a "$log_file"
+    fi
+    echo "---" | tee -a "$log_file"
+done
+
+echo "=== 提取完成 ==="
+echo "成功: $success_count 个文件"
+echo "失败: $fail_count 个文件"
+echo "详情见日志: $log_file"
+
+
+
+#4.检查提取结果
+echo "=== 检查提取结果 ==="
+
+# 检查提取的文件
+extracted_files=$(ls *_extracted.txt 2>/dev/null | wc -l)
+echo "提取的文件数量: $extracted_files"
+
+if [ $extracted_files -gt 0 ]; then
+    # 查看一个示例文件
+    sample_file=$(ls *_extracted.txt | head -1)
+    echo "示例文件 ($sample_file):"
+    echo "-------------------"
+    head -5 "$sample_file"
+    echo "-------------------"
+    echo "总行数: $(wc -l < "$sample_file")"
+    
+    # 检查MAF值范围
+    echo "MAF值统计:"
+    awk 'NR>1 {sum+=$5; count++; if($5<min||NR==2) min=$5; if($5>max) max=$5} 
+         END {printf "最小值=%.6f, 最大值=%.6f, 平均值=%.6f\n", min, max, sum/count}' "$sample_file"
+else
+    echo "错误: 没有找到提取的文件"
+    exit 1
+fi
+
+#5.创建MAF矩阵
+echo "=== 创建MAF矩阵 ==="
+
+# 设置输出文件
+output_matrix="population_maf_matrix.csv"
+
+# 1. 获取所有位点ID（从第一个提取文件）
+first_file=$(ls *_extracted.txt | head -1)
+echo "使用参考文件: $first_file"
+
+# 提取所有SV的ID（CHROM:POS）
+awk 'NR>1 {print $1":"$2}' "$first_file" > all_sv_ids.txt
+echo "总SV数量: $(wc -l < all_sv_ids.txt)"
+
+# 2. 创建表头
+header="SV_ID"
+for file in *_extracted.txt; do
+    # 提取群体名（去掉后缀）
+    pop=$(basename "$file" _maf_extracted.txt)
+    header="$header,$pop"
+done
+echo "$header" > "$output_matrix"
+echo "表头创建完成，包含 $(echo "$header" | tr ',' '\n' | wc -l) 列"
+
+# 3. 为每个群体提取MAF值
+echo "提取各群体MAF值..."
+for file in *_extracted.txt; do
+    pop=$(basename "$file" _maf_extracted.txt)
+    echo "  处理: $pop"
+    
+    # 提取MAF值（第5列）
+    awk 'NR>1 {print $5}' "$file" > "${pop}_values.tmp"
+    
+    # 验证行数
+    lines=$(wc -l < "${pop}_values.tmp")
+    expected=$(wc -l < all_sv_ids.txt)
+    if [ "$lines" -ne "$expected" ]; then
+        echo "警告: $pop 的行数($lines)与期望值($expected)不符" >&2
+    fi
+done
+
+# 4. 合并所有数据
+echo "合并数据..."
+paste -d',' all_sv_ids.txt *_values.tmp >> "$output_matrix"
+
+# 5. 清理临时文件
+rm -f *_values.tmp all_sv_ids.txt
+
+echo "=== MAF矩阵创建完成 ==="
+echo "输出文件: $output_matrix"
+echo "文件信息:"
+wc -l "$output_matrix"
+echo "列数: $(head -1 "$output_matrix" | tr ',' '\n' | wc -l)"
+
+# 显示前几行预览
+echo "前3行预览:"
+head -3 "$output_matrix" | sed 's/,/\t/g' | column -t
+
+#6.数据质量检查
+echo "=== 数据质量检查 ==="
+
+# 检查缺失值
+echo "检查缺失值..."
+awk -F',' '
+NR==1 {
+    nf=NF
+    print "总列数:", nf
+}
+NR>1 {
+    for(i=2;i<=nf;i++) {
+        if ($i == "" || $i == "NA" || $i == ".") {
+            missing[i]++
+        }
+    }
+}
+END {
+    print "缺失值统计:"
+    for(i=2;i<=nf;i++) {
+        if (missing[i] > 0) {
+            printf "列 %d: %d 个缺失值 (%.2f%%)\n", 
+                   i, missing[i], missing[i]/(NR-1)*100
+        }
+    }
+}' "$output_matrix"
+
+# 检查MAF分布
+echo -e "\nMAF分布统计（随机抽样3个群体）:"
+for pop in $(head -1 "$output_matrix" | tr ',' '\n' | tail -3); do
+    if [ "$pop" != "SV_ID" ]; then
+        col_num=$(head -1 "$output_matrix" | tr ',' '\n' | grep -n "^$pop$" | cut -d: -f1)
+        echo "群体 $pop (第 $col_num 列):"
+        awk -F',' -v col="$col_num" '
+        NR>1 {
+            val=$col
+            if (val != "" && val != "NA" && val != ".") {
+                if (val < 0.01) rare++
+                else if (val < 0.05) low++
+                else common++
+                total++
+            }
+        }
+        END {
+            if (total > 0) {
+                printf "  总位点: %d\n", total
+                printf "  稀有(MAF<0.01): %d (%.1f%%)\n", rare, rare/total*100
+                printf "  低频(0.01-0.05): %d (%.1f%%)\n", low, low/total*100
+                printf "  常见(MAF>0.05): %d (%.1f%%)\n", common, common/total*100
+            }
+        }' "$output_matrix"
+    fi
+done
