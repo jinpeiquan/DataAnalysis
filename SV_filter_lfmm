@@ -191,7 +191,183 @@ awk '{ $1=$2=$3=$4=$5=$6=""; print substr($0, index($0,$7)) }' > 200_samples_sv.
 
 
 #31Population计算maf
-#1.运行这个simple_direct_maf_modified.sh或者simple_maf_memory_optimized.sh脚本
+#1.运行这个simple_maf_memory_optimized.sh脚本
+
+# 创建内存优化的脚本
+cat > simple_maf_memory_optimized.sh << 'EOF'
+#!/bin/bash
+
+# ===========================================
+# 内存优化的MAF分析
+# ===========================================
+
+VCF="200_samples_modified.vcf"
+POP="200sample.pop"
+OUTDIR="maf_results_$(date +%Y%m%d_%H%M%S)"
+
+echo "============================================="
+echo "MAF分析（内存优化版）"
+echo "============================================="
+echo "开始时间: $(date)"
+echo "输入文件: $VCF"
+echo "群体文件: $POP"
+echo "输出目录: $OUTDIR"
+
+# 创建目录
+mkdir -p "$OUTDIR"
+mkdir -p "$OUTDIR/ids"
+
+# 第一步：显示群体信息
+echo -e "\n第一步：显示群体信息"
+echo "---------------------------------------------"
+
+awk '{print $2}' "$POP" | sort | uniq -c | sort -nr | tee "$OUTDIR/group_info.txt"
+
+# 第二步：为每个群体创建ID文件
+echo -e "\n第二步：创建ID文件"
+echo "---------------------------------------------"
+
+# 获取所有群体
+awk '{print $2}' "$POP" | sort | uniq > "$OUTDIR/all_groups.txt"
+
+TOTAL_GROUPS=$(wc -l < "$OUTDIR/all_groups.txt")
+echo "总群体数: $TOTAL_GROUPS"
+
+# 为每个群体创建ID文件（只需要IID，不需要FID）
+while read GROUP; do
+    echo -n "创建 $GROUP..."
+    awk -v g="$GROUP" '$2 == g {print $1}' "$POP" > "$OUTDIR/ids/${GROUP}.ids"
+    COUNT=$(wc -l < "$OUTDIR/ids/${GROUP}.ids")
+    echo " $COUNT 个样本"
+done < "$OUTDIR/all_groups.txt"
+
+# 第三步：开始处理所有群体
+echo -e "\n第三步：开始处理所有群体"
+echo "---------------------------------------------"
+echo "将处理所有 $TOTAL_GROUPS 个群体"
+echo "按 Ctrl+C 可以随时停止"
+echo ""
+
+read -p "按回车键开始，或按 Ctrl+C 取消..." 
+
+# 处理每个群体
+COUNT=0
+SUCCESS=0
+
+while read GROUP; do
+    ((COUNT++))
+    
+    echo -e "\n--- [$COUNT/$TOTAL_GROUPS] 处理: $GROUP ---"
+    
+    ID_FILE="$OUTDIR/ids/${GROUP}.ids"
+    SAMPLE_COUNT=$(wc -l < "$ID_FILE")
+    echo "样本数: $SAMPLE_COUNT"
+    
+    # 方法1：使用vcftools直接计算MAF（最节省内存）
+    echo "1. 使用vcftools直接计算MAF..."
+    
+    # 提取该群体的样本
+    vcftools --vcf "$VCF" \
+             --keep "$ID_FILE" \
+             --freq \
+             --out "$OUTDIR/${GROUP}_maf" \
+             2>"$OUTDIR/${GROUP}_vcftools.log"
+    
+    if [[ -f "$OUTDIR/${GROUP}_maf.frq" ]]; then
+        SNP_COUNT=$(( $(wc -l < "$OUTDIR/${GROUP}_maf.frq") - 1 ))
+        echo "✓ 成功: $SNP_COUNT 个SNP"
+        ((SUCCESS++))
+        
+        # 清理日志文件
+        rm -f "$OUTDIR/${GROUP}_vcftools.log"
+    else
+        echo "✗ vcftools计算失败，尝试方法2..."
+        
+        # 方法2：先提取小VCF再计算
+        echo "2. 提取小VCF..."
+        vcftools --vcf "$VCF" \
+                 --keep "$ID_FILE" \
+                 --recode \
+                 --recode-INFO-all \
+                 --stdout 2>/dev/null | \
+            gzip -c > "$OUTDIR/${GROUP}_small.vcf.gz"
+        
+        if [[ -f "$OUTDIR/${GROUP}_small.vcf.gz" ]]; then
+            echo "3. 计算MAF..."
+            vcftools --gzvcf "$OUTDIR/${GROUP}_small.vcf.gz" \
+                     --freq \
+                     --out "$OUTDIR/${GROUP}_maf" \
+                     2>/dev/null
+            
+            if [[ -f "$OUTDIR/${GROUP}_maf.frq" ]]; then
+                SNP_COUNT=$(( $(wc -l < "$OUTDIR/${GROUP}_maf.frq") - 1 ))
+                echo "✓ 成功: $SNP_COUNT 个SNP"
+                ((SUCCESS++))
+            fi
+            
+            # 清理中间文件
+            rm -f "$OUTDIR/${GROUP}_small.vcf.gz"
+        else
+            echo "✗ 两种方法都失败"
+        fi
+    fi
+    
+    # 显示进度
+    echo "进度: $COUNT/$TOTAL_GROUPS 完成"
+    
+done < "$OUTDIR/all_groups.txt"
+
+# 第四步：结果汇总
+echo -e "\n\n============================================="
+echo "分析完成"
+echo "============================================="
+echo "完成时间: $(date)"
+echo "总群体数: $TOTAL_GROUPS"
+echo "成功: $SUCCESS"
+echo "失败: $((TOTAL_GROUPS - SUCCESS))"
+
+# 显示结果
+echo -e "\n生成的MAF文件:"
+find "$OUTDIR" -name "*_maf.frq" -type f | sort | while read FILE; do
+    GROUP=$(basename "$FILE" | sed 's/_maf.frq//')
+    if [[ -f "$FILE" ]]; then
+        SNP_COUNT=$(( $(wc -l < "$FILE") - 1 ))
+        SAMPLE_COUNT=$(wc -l < "$OUTDIR/ids/${GROUP}.ids" 2>/dev/null || echo "?")
+        printf "  %-6s: %2d样本, %8d SNPs\n" "$GROUP" "$SAMPLE_COUNT" "$SNP_COUNT"
+    fi
+done
+
+# 创建汇总文件
+echo -e "\n创建汇总文件..."
+{
+    echo "群体名,样本数,SNP数"
+    find "$OUTDIR" -name "*_maf.frq" -type f | sort | while read FILE; do
+        GROUP=$(basename "$FILE" | sed 's/_maf.frq//')
+        if [[ -f "$FILE" ]]; then
+            SNP_COUNT=$(( $(wc -l < "$FILE") - 1 ))
+            SAMPLE_COUNT=$(wc -l < "$OUTDIR/ids/${GROUP}.ids" 2>/dev/null || echo "0")
+            echo "$GROUP,$SAMPLE_COUNT,$SNP_COUNT"
+        fi
+    done
+} > "$OUTDIR/maf_summary.csv"
+
+echo "✓ 汇总文件: $OUTDIR/maf_summary.csv"
+echo -e "\n输出目录: $OUTDIR"
+EOF
+
+chmod +x simple_maf_memory_optimized.sh
+
+echo "内存优化脚本已创建: simple_maf_memory_optimized.sh"
+echo "运行命令: bash simple_maf_memory_optimized.sh"
+echo ""
+echo "这个脚本会："
+echo "1. 使用vcftools直接计算MAF，避免内存问题"
+echo "2. 如果失败，再尝试提取小VCF的方法"
+echo "3. 更加节省内存"
+
+bash simple_maf_memory_optimized.sh
+
+
 #2.创建提取MAF的脚本
 cat > extract_maf.sh << 'EOF'
 #!/bin/bash
