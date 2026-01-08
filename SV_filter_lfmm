@@ -83,3 +83,12 @@ BEGIN {OFS="\t"}
     }
     print
 }' 200_samples_maf_miss.recode.vcf > 200_samples_modified.vcf
+
+
+bcftools query -f '[%GT\n]' 200_samples_modified.vcf | \
+> sort | uniq -c | sort -nr | head -20
+5388114 0/0
+2195707 1/1
+1905856 0/1
+1582615 1/0
+  88308 ./.
