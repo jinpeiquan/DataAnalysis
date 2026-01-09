@@ -62,7 +62,51 @@ bcftools view -H 200_samples_no_partial_missing.vcf | wc -l
 
 
 
+#xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx 175sample xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+#SNP数据，从200样本移除4个群体25个样本，输入文件是200_samples_no_partial_missing.vcf
 
+vcftools --vcf 200_samples_no_partial_missing.vcf \
+         --remove remove_indv.txt \
+         --recode \
+         --recode-INFO-all \
+         --out 175_samples_no_partial_missing_filtered
+
+
+#结果
+vcftools --vcf 200_samples_no_partial_missing.vcf \
+>          --remove remove_indv.txt \
+>          --recode \
+>          --recode-INFO-all \
+>          --out 175_samples_no_partial_missing_filtered
+
+VCFtools - 0.1.16
+(C) Adam Auton and Anthony Marcketta 2009
+
+Parameters as interpreted:
+        --vcf 200_samples_no_partial_missing.vcf
+        --remove remove_indv.txt
+        --recode-INFO-all
+        --out 175_samples_no_partial_missing_filtered
+        --recode
+
+Warning: Expected at least 2 parts in FORMAT entry: ID=RNC,Number=2,Type=Character,Description="Reason for No Call in GT: . = n/a, M = Missing data, P = Partial data, I = gVCF input site is non-called, D = insufficient Depth of coverage, - = unrepresentable overlapping deletion, L = Lost/unrepresentable allele (other than deletion), U = multiple Unphased variants present, O = multiple Overlapping variants present, 1 = site is Monoallelic, no assertion about presence of REF or ALT allele">
+Excluding individuals in 'exclude' list
+After filtering, kept 175 out of 200 Individuals
+Outputting VCF file...
+After filtering, kept 10546196 out of a possible 10546196 Sites
+Run Time = 6259.00 seconds
+
+#看样本数量
+bcftools query -l 175_samples_no_partial_missing_filtered.recode.vcf | wc -l
+175
+
+#检查一下基因型是否转化  175sample
+ bcftools query -f '[%GT\n]' 175_samples_no_partial_missing_filtered.recode.vcf | \
+ sort | uniq -c | sort -nr | head -10
+1252532189 0/0
+424915331 0/1
+307130013 1/1
+124661667 ./.
 
 
 
