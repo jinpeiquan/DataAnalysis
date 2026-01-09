@@ -87,6 +87,13 @@ After filtering, kept 55803 out of a possible 55803 Sites
 Run Time = 183.00 seconds
 
 
+bcftools query -f '[%GT\n]' 175_samples_maf_miss.recode_modified.recode.vcf | \
+>  sort | uniq -c | sort -nr | head -20
+4736368 0/0
+1929199 1/1
+1646407 0/1
+1373239 1/0
+  80312 ./.
 
 
 
