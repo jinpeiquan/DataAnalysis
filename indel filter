@@ -22,6 +22,11 @@ nohup vcftools --vcf 200_samples_bia_indel.recode.vcf \
 echo "MAF和缺失率过滤进程 PID: $!"
 原始位点: 86,799个;保留位点: 55,803个;过滤掉: 30,996个位点 (约35.7%)
 
+bcftools query -f '[%GT\n]' 200_samples_maf_miss.recode.vcf| \
+sort | uniq -c | sort -nr | head -20
+
+
+
 s删除4个群体HJLL、HYX、ZJP、EJ的25个个体
 vcftools --vcf 200_samples_maf_miss.recode.vcf --remove remove_indv.txt --recode --recode-INFO-all --out 175_samples_maf_miss.filtered
 结果
