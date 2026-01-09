@@ -63,7 +63,20 @@ bcftools query -f '[%GT\n]' 200_samples_maf_miss.recode_modified.vcf | \
 
 
 
-s删除4个群体HJLL、HYX、ZJP、EJ的25个个体
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx 175sample xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+删除4个群体HJLL、HYX、ZJP、EJ的25个个体
+vcftools --vcf 200_samples_maf_miss.recode_modified.vcf --remove remove_indv.txt --recode --recode-INFO-all --out 175_samples_maf_miss.recode_modified
+结果
+
+
+
+
+
+
+
+
+
+删除4个群体HJLL、HYX、ZJP、EJ的25个个体
 vcftools --vcf 200_samples_maf_miss.recode.vcf --remove remove_indv.txt --recode --recode-INFO-all --out 175_samples_maf_miss.filtered
 结果
 vcftools --vcf 200_samples_maf_miss.recode.vcf --remove remove_indv.txt --recode --recode-INFO-all --out 175_samples_f_miss.filtered
