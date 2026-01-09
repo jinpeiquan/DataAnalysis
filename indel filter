@@ -22,9 +22,15 @@ nohup vcftools --vcf 200_samples_bia_indel.recode.vcf \
 echo "MAF和缺失率过滤进程 PID: $!"
 原始位点: 86,799个;保留位点: 55,803个;过滤掉: 30,996个位点 (约35.7%)
 
-
-bcftools query -f '[%GT\n]' 200_samples_maf_miss.recode.vcf| \
-sort | uniq -c | sort -nr | head -20
+#看基因型
+ bcftools query -f '[%GT\n]' 200_samples_maf_miss.recode.vcf| \
+> sort | uniq -c | sort -nr | head -20
+5388114 0/0
+2165899 1/1
+1905856 0/1
+1582615 1/0
+  88308 ./.
+  29808 1/2
 
 
 #把基因型1/2变成1/1
@@ -46,6 +52,14 @@ BEGIN {OFS="\t"}
     print
 }' 200_samples_maf_miss.recode.vcf > 200_samples_maf_miss.recode_modified.vcf
 
+#检查转换后的基因型
+bcftools query -f '[%GT\n]' 200_samples_maf_miss.recode_modified.vcf | \
+>  sort | uniq -c | sort -nr | head -20
+5388114 0/0
+2195707 1/1
+1905856 0/1
+1582615 1/0
+  88308 ./.
 
 
 
