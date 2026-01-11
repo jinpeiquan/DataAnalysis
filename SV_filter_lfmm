@@ -112,6 +112,34 @@ plink --vcf 200_samples_modified.vcf \
  plink --vcf 200_samples_modified.vcf \
 >       --recode --allow-extra-chr \
 >       --out 200_samples_sv.plink
+PLINK v1.90b6.21 64-bit (19 Oct 2020)          www.cog-genomics.org/plink/1.9/
+(C) 2005-2020 Shaun Purcell, Christopher Chang   GNU General Public License v3
+Logging to 200_samples_sv.plink.log.
+Options in effect:
+  --allow-extra-chr
+  --out 200_samples_sv.plink
+  --recode
+  --vcf 200_samples_modified.vcf
+
+838227 MB RAM detected; reserving 419113 MB for main workspace.
+--vcf: 200_samples_sv.plink-temporary.bed + 200_samples_sv.plink-temporary.bim
++ 200_samples_sv.plink-temporary.fam written.
+55803 variants loaded from .bim file.
+200 people (0 males, 0 females, 200 ambiguous) loaded from .fam.
+Ambiguous sex IDs written to 200_samples_sv.plink.nosex .
+Using 1 thread (no multithreaded calculations invoked).
+Before main variant filters, 200 founders and 0 nonfounders present.
+Calculating allele frequencies... done.
+Total genotyping rate is 0.992088.
+55803 variants and 200 people pass filters and QC.
+Note: No phenotypes present.
+--recode ped to 200_samples_sv.plink.ped + 200_samples_sv.plink.map ... done.
+
+
+#结果
+ plink --vcf 200_samples_modified.vcf \
+>       --recode --allow-extra-chr \
+>       --out 200_samples_sv.plink
 PLINK v1.9.0-b.8 64-bit (22 Oct 2024)              cog-genomics.org/plink/1.9/
 (C) 2005-2024 Shaun Purcell, Christopher Chang   GNU General Public License v3
 Logging to 200_samples_sv.plink.log.
@@ -144,6 +172,41 @@ Note: No phenotypes present.
 plink --file 200_samples_sv.plink \
       --recodeA --allow-extra-chr \
       --out 200_samples_sv.plink.recodeA
+#结果
+plink --file 200_samples_sv.plink \
+>       --recodeA --allow-extra-chr \
+>       --out 200_samples_sv.plink.recodeA
+PLINK v1.90b6.21 64-bit (19 Oct 2020)          www.cog-genomics.org/plink/1.9/
+(C) 2005-2020 Shaun Purcell, Christopher Chang   GNU General Public License v3
+Note: --recodeA flag deprecated.  Use "--recode A ...".
+Logging to 200_samples_sv.plink.recodeA.log.
+Options in effect:
+  --allow-extra-chr
+  --file 200_samples_sv.plink
+  --out 200_samples_sv.plink.recodeA
+  --recode A
+
+838227 MB RAM detected; reserving 419113 MB for main workspace.
+Possibly irregular .ped line.  Restarting scan, assuming multichar alleles.
+.ped scan complete (for binary autoconversion).
+Performing single-pass .bed write (55803 variants, 200 people).
+--file: 200_samples_sv.plink.recodeA-temporary.bed +
+200_samples_sv.plink.recodeA-temporary.bim +
+200_samples_sv.plink.recodeA-temporary.fam written.
+55803 variants loaded from .bim file.
+200 people (0 males, 0 females, 200 ambiguous) loaded from .fam.
+Ambiguous sex IDs written to 200_samples_sv.plink.recodeA.nosex .
+Using 1 thread (no multithreaded calculations invoked).
+Before main variant filters, 200 founders and 0 nonfounders present.
+Calculating allele frequencies... done.
+Total genotyping rate is 0.992088.
+55803 variants and 200 people pass filters and QC.
+Note: No phenotypes present.
+--recode A to 200_samples_sv.plink.recodeA.raw ... done.
+
+
+
+
 #结果
 plink --file 200_samples_sv.plink \
 >       --recodeA --allow-extra-chr \
