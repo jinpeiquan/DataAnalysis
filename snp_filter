@@ -59,6 +59,14 @@ Filled 450810 alleles
 bcftools view -H 200_samples_no_partial_missing.vcf | wc -l
 10546196
 
+#把JMX和WYL的样本名字中间横杠统一成下划线
+# 一行命令创建正确映射文件
+printf "JMX-15\tJMX_15\nJMX-16\tJMX_16\nJMX-17\tJMX_17\nJMX-18\tJMX_18\nJMX-19\tJMX_19\nWYL-2\tWYL_2\nWYL-5\tWYL_5\nWYL-7\tWYL_7\n" > sample_rename.txt
+#重命名
+bcftools reheader -s sample_rename.txt 175_samples_no_partial_missing_filtered.recode.vcf -o 175_samples_renamed.vcf
+
+
+
 
 
 
