@@ -1,0 +1,77 @@
+总的环境因子
+awk -F, '
+BEGIN {
+    OFS=",";
+    print "CHROM,START,END,SVLEN,ID,SV_ID";
+}
+# 读取第一个文件：SV_calibrated_pvalues1.csv
+NR==FNR && FNR>1 {
+    # 提取ID中的数字部分
+    id = $5;
+    # 提取所有数字并连接
+    if (match(id, />([0-9]+)>([0-9]+)/, arr)) {
+        key = arr[1] arr[2];  # 连接两个数字
+        extracted[key] = $1 "," $2 "," $3 "," $4 "," id;
+    }
+    next
+}
+# 读取第二个文件：all_significant_sv_fdr05_union.csv
+FNR>1 {
+    sv_id = $1;
+    # 提取SV_ID中的数字部分
+    if (match(sv_id, />([0-9]+)>([0-9]+)/, arr)) {
+        key = arr[1] arr[2];  # 连接两个数字
+        
+        if (key in extracted) {
+            print extracted[key], sv_id;
+        } else {
+            print "NA,NA,NA,NA", sv_id, sv_id;
+        }
+    } else {
+        print "NA,NA,NA,NA", sv_id, sv_id;
+    }
+}
+' SV_calibrated_pvalues1.csv all_significant_sv_fdr05_union.csv > finalall_significant_sv_fdr05_union_combined.csv
+
+
+
+
+
+
+
+单个环境因子
+awk -F, '
+BEGIN {
+    OFS=",";
+    print "CHROM,START,END,SVLEN,ID,SV_ID,P_value,Q_value";
+}
+# 读取第一个文件：SV_calibrated_pvalues1.csv（位置信息）
+NR==FNR && FNR>1 {
+    id = $5;
+    # 提取数字部分
+    gsub(/[^0-9]/, "", id);
+    if (id != "") {
+        # 存储位置信息
+        extracted[id] = $1 "," $2 "," $3 "," $4 "," $5;
+    }
+    next;
+}
+# 读取第二个文件：significant_05_BIO19.csv（P值和Q值）
+FNR>1 {
+    sv_id = $1;
+    p_value = $2;
+    q_value = $3;
+    
+    # 提取数字部分
+    sv_id_clean = sv_id;
+    gsub(/[^0-9]/, "", sv_id_clean);
+    
+    if (sv_id_clean != "" && sv_id_clean in extracted) {
+        # 合并位置信息和P值/Q值
+        print extracted[sv_id_clean], sv_id, p_value, q_value;
+    } else {
+        # 如果没有匹配，输出NA值
+        print "NA,NA,NA,NA,NA", sv_id, p_value, q_value;
+    }
+}
+' SV_calibrated_pvalues1.csv significant_05_BIO19.csv > final_significant_05BIO19_combined.csv
